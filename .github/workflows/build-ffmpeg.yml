@@ -1,0 +1,143 @@
+name: Build FFmpeg (media-autobuild_suite)
+
+on:
+  push:
+    branches: [ "deploy" ]
+  pull_request:
+    branches: [ "deploy" ]
+  schedule:
+    - cron: '0 0 */7 * *'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 360
+    outputs:
+      timestamp: ${{ steps.run-script.outputs.timestamp }}
+      artifact_name: ffmpeg-x64-${{ steps.run-script.outputs.timestamp }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Prepare short workspace path
+        shell: pwsh
+        run: |
+          if (Test-Path 'D:\mabs') {
+            Remove-Item -Path 'D:\mabs' -Recurse -Force
+          }
+          New-Item -ItemType Directory -Path 'D:\mabs' | Out-Null
+          Copy-Item -Path "$env:GITHUB_WORKSPACE\*" -Destination 'D:\mabs' -Recurse -Force
+
+      - id: run-script
+        name: Build FFmpeg Windows x64 shared
+        shell: pwsh
+        run: |
+          $work = 'D:\mabs'
+          Push-Location $work
+          Write-Host "Starting media-autobuild_suite.bat in $work"
+          & cmd.exe /c "call "$work\media-autobuild_suite.bat""
+
+          # The suite uses the presence of build/logs.zip to indicate a failed build.
+          $logs = Join-Path $work 'build\logs.zip'
+          New-Item -Path "$work\build" -ItemType Directory -Force | Out-Null
+          if (Test-Path $logs) {
+            Write-Host "::error::Detected failure artifact: $logs"
+            Pop-Location
+            exit 1
+          } else {
+            Write-Host 'No logs.zip found; treating run as success.'
+          }
+
+          Pop-Location
+
+          # Output timestamp for later steps
+          $timestamp = Get-Date -Format 'yyyyMMdd_HHmmss'
+          "timestamp=$timestamp" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding ASCII -Append
+          exit 0
+
+      - name: Upload error logs
+        if: failure() && steps.run-script.conclusion == 'failure'
+        uses: actions/upload-artifact@v7
+        with:
+          path: D:\mabs\build\logs.zip
+          if-no-files-found: error
+          archive: false
+
+      - name: Organize build artifacts
+        shell: pwsh
+        run: |
+          $output = 'D:\mabs\artifacts'
+          New-Item -ItemType Directory -Path $output -Force | Out-Null
+          $toolsOutput = Join-Path $output 'tools'
+          New-Item -ItemType Directory -Path $toolsOutput -Force | Out-Null
+          
+          # Copy doc folder
+          Copy-Item -Path 'D:\mabs\local64\share\doc\ffmpeg' -Destination "$output\doc" -Recurse -Force
+          
+          # Copy specific bin files
+          $binSource = 'D:\mabs\local64\bin-video'
+          Write-Host "Output Binaries:"
+          Get-ChildItem -Path "$binSource" -Recurse
+          $files = @(
+            'avcodec-*.dll', 'avdevice-*.dll', 'avfilter-*.dll', 'avformat-*.dll', 'avutil-*.dll',
+            'ffmpeg.exe', 'ffplay.exe', 'ffprobe.exe', 'swresample-*.dll', 'swscale-*.dll'
+          )
+          
+          foreach ($pattern in $files) {
+            Get-Item -Path "$binSource\$pattern" -ErrorAction SilentlyContinue | Copy-Item -Destination $output -Force
+          }
+
+          # Copy optional tool executables into a single tools folder
+          $toolSources = @(
+            'D:\mabs\local64\bin-video\dovi_tool.exe',
+            'D:\mabs\local64\bin-global\gifski.exe'
+          )
+
+          foreach ($tool in $toolSources) {
+            if (Test-Path $tool) {
+              Copy-Item -Path $tool -Destination $toolsOutput -Force
+            } else {
+              Write-Host "Optional tool not found, skipping: $tool"
+            }
+          }
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: ffmpeg-x64-${{ steps.run-script.outputs.timestamp }}
+          path: D:\mabs\artifacts\**
+          if-no-files-found: error
+          compression-level: 9
+
+  publish:
+    name: Publish rolling release
+    needs: build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/deploy'
+    runs-on: ubuntu-slim
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ needs.build.outputs.artifact_name }}
+          path: release-assets
+          skip-decompress: true
+
+      - name: Publish to rolling release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ffmpeg-latest
+          name: Autobuild - ${{ needs.build.outputs.timestamp }}
+          body: |
+            Automated rolling release of FFmpeg Windows x64 shared.
+
+            - Action: ${{ github.run_number }}
+            - Builder Commit: ${{ github.sha }}
+          allowUpdates: true
+          removeArtifacts: true
+          artifactErrorsFailBuild: true
+          artifacts: release-assets/${{ needs.build.outputs.artifact_name }}.zip

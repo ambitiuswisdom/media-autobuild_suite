@@ -1,0 +1,53 @@
+name: Sync upstream master
+
+on:
+  schedule:
+    - cron: '0 0 */2 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-slim
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      owner: ${{ github.repository_owner }}
+      repo: ${{ github.repository }}
+
+    steps:
+      - id: sync_upstream
+        name: Sync from upstream
+        shell: bash
+        run: |
+          result=$(gh repo sync "$repo" --branch master --source m-ab-s/media-autobuild_suite 2>&1)
+
+          if echo "$result" | grep -q "already up to date"; then
+            echo "master is already in sync with upstream/master"
+            echo "updated=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "$result"
+            echo "updated=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open PR to deploy
+        if: steps.sync_upstream.outputs.updated == 'true'
+        shell: bash
+        run: |
+          head="${owner}:master"
+          base="deploy"
+
+          # List open PRs from master -> deploy; output lines like: "<number> <url>"
+          prs=$(gh pr list --state open --head "$head" --base "$base" --json number,url --jq '.[] | "\(.number) \(.url)"')
+
+          if [ -n "$prs" ]; then
+            echo "Existing open PR found; skipping PR creation."
+            echo "$prs"
+            exit 0
+          fi
+
+          gh pr create --repo "$repo" --title "Sync master to deploy" \
+            --body $'Automated pull request created after synchronizing master with upstream/master.\n\nPlease review and merge manually when ready.' \
+            --base "$base" --head "master"
