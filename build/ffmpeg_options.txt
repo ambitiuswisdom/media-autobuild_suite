@@ -84,7 +84,7 @@
 --enable-libgme
 --enable-libilbc
 #--enable-libsvthevc
-#--enable-libsvtvp9
+--enable-libsvtvp9
 --enable-libkvazaar
 --enable-libmodplug
 --enable-librist
@@ -108,7 +108,7 @@
 --enable-libplacebo
 --enable-libjxl
 --enable-libvvenc
-#--enable-libvvdec
+--enable-libvvdec
 --enable-liblc3
 --enable-audiotoolbox
 --enable-libsvtjpegxs
