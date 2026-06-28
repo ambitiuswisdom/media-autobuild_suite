@@ -25,10 +25,11 @@ jobs:
           result=$(gh repo sync "$repo" --branch master --source m-ab-s/media-autobuild_suite 2>&1)
 
           if echo "$result" | grep -q "already up to date"; then
-            echo "master is already in sync with upstream/master"
+            echo "::notice::master is already in sync with upstream/master."
             echo "updated=false" >> "$GITHUB_OUTPUT"
           else
             echo "$result"
+            echo "::notice::master has been updated from upstream/master."
             echo "updated=true" >> "$GITHUB_OUTPUT"
           fi
 
