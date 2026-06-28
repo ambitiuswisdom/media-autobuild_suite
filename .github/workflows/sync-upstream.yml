@@ -40,7 +40,7 @@ jobs:
           base="deploy"
 
           # List open PRs from master -> deploy; output lines like: "<number> <url>"
-          prs=$(gh pr list --state open --head "$head" --base "$base" --json number,url --jq '.[] | "\(.number) \(.url)"')
+          prs=$(gh pr list --repo "$repo" --state open --head "$head" --base "$base" --json number,url --jq '.[] | "\(.number) \(.url)"')
 
           if [ -n "$prs" ]; then
             echo "Existing open PR found; skipping PR creation."
