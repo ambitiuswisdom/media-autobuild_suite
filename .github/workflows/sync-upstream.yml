@@ -22,16 +22,19 @@ jobs:
         name: Sync from upstream
         shell: bash
         run: |
-          result=$(gh repo sync "$repo" --branch master --source m-ab-s/media-autobuild_suite 2>&1)
+          local_head=$(gh api "repos/$repo/git/ref/heads/master" --jq '.object.sha')
+          upstream_head=$(gh api "repos/m-ab-s/media-autobuild_suite/git/ref/heads/master" --jq '.object.sha')
 
-          if echo "$result" | grep -q "already up to date"; then
+          if [ "$local_head" = "$upstream_head" ]; then
             echo "::notice::master is already in sync with upstream/master."
             echo "updated=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "$result"
-            echo "::notice::master has been updated from upstream/master."
-            echo "updated=true" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+
+          echo "Syncing master from $local_head to $upstream_head ..."
+          gh repo sync "$repo" --branch master --source m-ab-s/media-autobuild_suite
+          echo "::notice::master has been updated from upstream/master."
+          echo "updated=true" >> "$GITHUB_OUTPUT"
 
       - name: Open PR to deploy
         if: steps.sync_upstream.outputs.updated == 'true'
