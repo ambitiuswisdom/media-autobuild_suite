@@ -81,7 +81,7 @@ jobs:
                 Sort-Object FullName |
                 ForEach-Object {
                   [pscustomobject]@{
-                    Folder = Join-Path (Split-Path $folder -Leaf) ($_.FullName.Substring($folder.Length + 1))
+                    Folder = ((Split-Path $folder -Leaf) + '\' + [System.IO.Path]::GetRelativePath($folder, $_.DirectoryName)).TrimEnd('\', '.')
                     FileName = $_.Name
                     SizeKB = [math]::Round($_.Length / 1KB)
                     WriteTimeUtc = $_.LastWriteTimeUtc.ToString('yyyy-MM-dd HH:mm:ss')

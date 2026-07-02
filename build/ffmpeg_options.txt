@@ -83,7 +83,7 @@
 --enable-libfribidi
 --enable-libgme
 --enable-libilbc
-#--enable-libsvthevc
+--enable-libsvthevc
 --enable-libsvtvp9
 --enable-libkvazaar
 --enable-libmodplug
