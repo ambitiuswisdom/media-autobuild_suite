@@ -30,6 +30,14 @@ jobs:
           New-Item -ItemType Directory -Path 'D:\mabs' | Out-Null
           Copy-Item -Path "$env:GITHUB_WORKSPACE\*" -Destination 'D:\mabs' -Recurse -Force
 
+      - name: Cache build cache
+        uses: actions/cache@v6
+        with:
+          path: D:\mabs\build\cache
+          key: ${{ runner.os }}-mabs-build-cache-${{ hashFiles('build/**', 'media-autobuild_suite.bat') }}
+          restore-keys: |
+            ${{ runner.os }}-mabs-build-cache-
+
       - id: run-script
         name: Build FFmpeg Windows x64 shared
         shell: pwsh
