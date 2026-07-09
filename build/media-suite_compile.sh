@@ -2463,8 +2463,8 @@ if [[ $ffmpeg != no ]]; then
     if enabled libssh; then
         do_pacman_install libssh
         do_addOption --extra-cflags=-DLIBSSH_STATIC
-        grep_or_sed "Requires.private" "$MINGW_PREFIX"/lib/pkgconfig/libssh.pc \
-            "/Libs:/ i\Requires.private: zlib libssl"
+        grep_or_sed "libssl" "$MINGW_PREFIX"/lib/pkgconfig/libssh.pc \
+            $'/^Requires\.private:/ c\\\nRequires.private: libssl libcrypto zlib\nLibs.private: -liphlpapi -lws2_32 -lpthread'
     fi
     enabled libtheora && do_pacman_install libtheora
     enabled libcaca && do_addOption --extra-cflags=-DCACA_STATIC && do_pacman_install libcaca
