@@ -120,6 +120,7 @@
 --enable-cairo
 --enable-lcms2
 --enable-libshaderc
+--enable-libmpeghdec
 
 # Full plus options that add shared dependencies
 --enable-opencl

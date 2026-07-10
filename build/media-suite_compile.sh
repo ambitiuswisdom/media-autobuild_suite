@@ -1283,6 +1283,18 @@ if [[ $ffmpeg != no ]] && enabled liblc3 &&
     do_checkIfExist
 fi
 
+_check=(libmpeghdec.a mpeghdec.pc mpeghdec/{mpeghexport,mpeghdecoder}.h)
+if [[ $ffmpeg != no ]] && enabled libmpeghdec &&
+    do_vcs "$SOURCE_REPO_MPEGHDEC"; then
+    do_uninstall include/mpeghdec "${_check[@]}"
+    grep_or_sed '__x86_64__) && !defined(_WIN32)' src/libFDK/include/common_fix.h \
+        's;!defined\(_MSC_VER\) && defined\(__x86_64__\);& \&\& !defined(_WIN32);'
+    do_cmakeinstall -Dmpeghdec_BUILD_BINARIES=OFF -Dmpeghdec_BUILD_UIMANAGER=OFF \
+        -DCMAKE_INSTALL_DATAROOTDIR=lib
+    sed -i 's/^Cflags:.*/& -DMPEGHDEC_STATIC/' "$LOCALDESTDIR/lib/pkgconfig/mpeghdec.pc"
+    do_checkIfExist
+fi
+
 _check=(bin/atw_ldwrapper libAudioToolboxWrapper.a)
 if [[ $ffmpeg != no ]] && enabled audiotoolbox; then
     _qtfiles_url="https://github.com/AnimMouse/QTFiles/releases/download/v12.10.11"
