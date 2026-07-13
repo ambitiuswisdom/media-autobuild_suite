@@ -100,7 +100,6 @@
 --enable-ladspa
 --enable-vapoursynth
 --enable-liblensfun
-#--enable-libglslang
 --enable-vulkan
 --enable-libdavs2
 --enable-libxavs2
@@ -119,7 +118,6 @@
 --enable-liboapv
 --enable-cairo
 --enable-lcms2
---enable-libshaderc
 --enable-libmpeghdec
 
 # Full plus options that add shared dependencies
