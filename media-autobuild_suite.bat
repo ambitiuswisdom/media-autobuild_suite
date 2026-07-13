@@ -2121,6 +2121,10 @@ goto :EOF
     echo.export DXSDK_DIR ACLOCAL_PATH PKG_CONFIG PKG_CONFIG_PATH CFLAGS CXXFLAGS LDFLAGS
     echo.
     echo.export CARGO_HOME="/opt/cargo"
+    echo.[[ ${MABS_ORIGINAL_RUSTFLAGS+x} ]] ^|^| MABS_ORIGINAL_RUSTFLAGS="$RUSTFLAGS"
+    echo.export RUSTFLAGS="$MABS_ORIGINAL_RUSTFLAGS"
+    if "%1"=="64" echo.export RUSTFLAGS="${RUSTFLAGS:+$RUSTFLAGS }-C target-cpu=x86-64-v3"
+    echo.[[ $RUSTFLAGS ]] ^|^| unset RUSTFLAGS
     echo.if [[ -z "$CCACHE_DIR" ]]; then
     echo.    export CCACHE_DIR="${LOCALBUILDDIR}/cache"
     echo.fi
