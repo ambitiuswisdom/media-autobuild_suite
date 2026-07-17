@@ -2645,7 +2645,7 @@ if [[ $ffmpeg != no ]]; then
             "$LOCALDESTDIR"/bin-video/{sw{scale,resample},postproc}.lib
             )
         _check=()
-        sedflags="prefix|bindir|extra-version|pkg-config-flags"
+        sedflags="prefix|bindir|shlibdir|cc|cxx|ld|pkg-config(-flags)?|extra-(cflags|cxxflags|ldflags|libs|version)"
 
         # --build-suffix handling
         opt_exists FFMPEG_OPTS "^--build-suffix=[a-zA-Z0-9-]+$" &&

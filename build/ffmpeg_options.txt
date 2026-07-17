@@ -90,7 +90,7 @@
 --enable-librist
 #--enable-librtmp
 --enable-librubberband
-#--enable-libssh
+--enable-libssh
 --enable-libtesseract
 --enable-libxavs
 --enable-libzmq
