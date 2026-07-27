@@ -123,4 +123,4 @@
 # Full plus options that add shared dependencies
 --enable-opencl
 --enable-opengl
-#--enable-libopenh264
+--enable-libopenh264
