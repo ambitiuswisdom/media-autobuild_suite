@@ -1810,18 +1810,11 @@ if [[ $ffmpeg != no ]] && enabled libzvbi &&
 fi
 
 if [[ $ffmpeg != no ]] && enabled_any frei0r ladspa; then
-    _check=(libdl.a dlfcn.h)
-    if do_vcs "$SOURCE_REPO_DLFCN"; then
-        do_uninstall "${_check[@]}"
-        do_cmakeinstall
-        do_checkIfExist
-    fi
-
     _check=(frei0r.{h,pc})
     if do_vcs "$SOURCE_REPO_FREI0R"; then
         do_uninstall lib/frei0r-1 "${_check[@]}"
         do_pacman_install gavl
-        do_cmakeinstall -DWITHOUT_OPENCV=on -DWITHOUT_CAIRO=on
+        do_cmakeinstall -DBUILD_TESTING=OFF -DWITHOUT_OPENCV=on -DWITHOUT_CAIRO=on
         do_checkIfExist
     fi
 fi
