@@ -76,6 +76,7 @@
 --enable-decklink
 --enable-frei0r
 --enable-libaribb24
+--enable-libaribcaption
 --enable-libbs2b
 --enable-libcaca
 --enable-libcdio

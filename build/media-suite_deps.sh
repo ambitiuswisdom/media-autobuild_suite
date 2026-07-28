@@ -42,6 +42,7 @@ SOURCE_REPO_LENSFUN=https://github.com/lensfun/lensfun.git
 SOURCE_REPO_LEPT=https://github.com/DanBloomberg/leptonica.git
 SOURCE_REPO_LIBAACS=https://code.videolan.org/videolan/libaacs.git
 SOURCE_REPO_LIBAOM=https://aomedia.googlesource.com/aom
+SOURCE_REPO_LIBARIBCAPTION=https://github.com/xqq/libaribcaption.git
 SOURCE_REPO_LIBASS=https://github.com/libass/libass.git
 SOURCE_REPO_LIBAVIF=https://github.com/AOMediaCodec/libavif.git
 SOURCE_REPO_LIBBDPLUS=https://code.videolan.org/videolan/libbdplus.git
