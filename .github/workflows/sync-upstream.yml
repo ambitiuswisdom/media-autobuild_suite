@@ -14,7 +14,6 @@ jobs:
     runs-on: ubuntu-slim
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      owner: ${{ github.repository_owner }}
       repo: ${{ github.repository }}
 
     steps:
@@ -40,7 +39,7 @@ jobs:
         if: steps.sync_upstream.outputs.updated == 'true'
         shell: bash
         run: |
-          head="${owner}:master"
+          head="master"
           base="deploy"
 
           # List open PRs from master -> deploy; output lines like: "<number> <url>"
