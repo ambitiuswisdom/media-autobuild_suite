@@ -354,7 +354,7 @@ if [[ $gifski != n ]] && [[ $bits = 32bit ]]; then
 elif [[ $gifski != n ]]; then
     if [[ $gifski = video ]]; then
         _check=("$LOCALDESTDIR"/opt/gifskiffmpeg/lib/pkgconfig/lib{av{codec,device,filter,format,util},swscale}.pc)
-        if flavor=gifski do_vcs "https://git.ffmpeg.org/ffmpeg.git#branch=release/8.0"; then
+        if flavor=gifski do_vcs "https://code.ffmpeg.org/FFmpeg/FFmpeg.git#branch=release/8.0"; then
             do_uninstall "$LOCALDESTDIR"/opt/gifskiffmpeg
             [[ -f config.mak ]] && log "distclean" make distclean
             create_build_dir gifski
@@ -781,6 +781,24 @@ if [[ $jpegxl = y ]] || { [[ $ffmpeg != no ]] && enabled libjxl; }; then
         do_checkIfExist
         unset extracommands
     fi
+fi
+
+_check=(libqrencode.a libqrencode.pc qrencode.h)
+if [[ $ffmpeg != no ]] && enabled libqrencode &&
+    do_vcs "$SOURCE_REPO_LIBQRENCODE"; then
+    do_uninstall "${_check[@]}"
+    do_cmakeinstall -DWITH_TOOLS=OFF -DWITH_TESTS=OFF -DWITHOUT_PNG=ON
+    do_checkIfExist
+fi
+
+_check=(libquirc.a quirc.h)
+if [[ $ffmpeg != no ]] && enabled libquirc &&
+    do_vcs "$SOURCE_REPO_QUIRC"; then
+    do_uninstall "${_check[@]}"
+    do_make libquirc.a CFLAGS="$CFLAGS -fPIC" SDL_CFLAGS=
+    do_install libquirc.a
+    do_install lib/quirc.h quirc.h
+    do_checkIfExist
 fi
 
 if files_exist bin-video/OpenCL.dll; then

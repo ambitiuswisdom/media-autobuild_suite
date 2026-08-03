@@ -1277,6 +1277,10 @@ do_patch() {
 
     if [[ -f $patchName ]]; then
         if $am; then
+            if ! git apply -3 --check --ignore-space-change --ignore-whitespace "$patchName" > /dev/null 2>&1 &&
+                git config --get remote.origin.partialclonefilter > /dev/null 2>&1; then
+                git fetch -q --refetch --no-filter
+            fi
             git apply -3 --check --ignore-space-change --ignore-whitespace "$patchName" > /dev/null 2>&1 &&
                 git am -q -3 --ignore-whitespace --no-gpg-sign "$patchName" > /dev/null 2>&1 &&
                 return 0
@@ -1826,6 +1830,10 @@ do_pacman_remove() (
 )
 
 do_prompt() {
+    if [[ -n ${CI:-} ]]; then
+        ret=
+        return 0
+    fi
     # from http://superuser.com/a/608509
     while read -r -s -e -t 0.1; do :; done
     read -r -p "$1" ret
