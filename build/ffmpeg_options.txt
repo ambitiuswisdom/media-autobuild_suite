@@ -121,6 +121,8 @@
 --enable-lcms2
 --enable-libmpeghdec
 --enable-libcurl
+--enable-libqrencode
+--enable-libquirc
 
 # Full plus options that add shared dependencies
 --enable-opencl
