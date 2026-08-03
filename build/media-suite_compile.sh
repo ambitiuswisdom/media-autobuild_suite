@@ -2030,7 +2030,7 @@ if [[ $x264 != no ]] ||
         check_custom_patches
         create_build_dir
         extra_script pre configure
-        PKGCONFIG="$PKG_CONFIG" CFLAGS="${CFLAGS// -O2 / }" \
+        PKGCONFIG="$PKG_CONFIG" CFLAGS="${CFLAGS// -O3 / }" \
             log configure ../configure "${extracommands[@]}"
         extra_script post configure
         do_make
