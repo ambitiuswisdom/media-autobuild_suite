@@ -91,7 +91,7 @@ SOURCE_REPO_MPV=https://github.com/mpv-player/mpv.git
 SOURCE_REPO_MUJS=https://codeberg.org/ccxvii/mujs.git
 SOURCE_REPO_NEON=https://github.com/notroj/neon.git
 SOURCE_REPO_OPENAL=https://github.com/kcat/openal-soft.git#tag=latest
-SOURCE_REPO_OPENAPV=https://github.com/AcademySoftwareFoundation/openapv.git
+SOURCE_REPO_OPENAPV=https://github.com/AcademySoftwareFoundation/openapv.git#tag=v0.3.0.0
 SOURCE_REPO_OPENCLHEADERS=https://github.com/KhronosGroup/OpenCL-Headers.git
 SOURCE_REPO_OPENH264=https://github.com/cisco/openh264.git
 SOURCE_REPO_OPUS=https://github.com/xiph/opus.git
