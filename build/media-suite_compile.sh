@@ -438,7 +438,7 @@ if [[ $ffmpeg != no ]] && enabled libaribb24; then
 
     _deps=(libpng.{pc,a} libpng16.{pc,a})
     _check=(aribb24.pc libaribb24.{,l}a)
-    if do_vcs "$SOURCE_REPO_ARRIB24"; then
+    if do_vcs "$SOURCE_REPO_ARIBB24"; then
         do_patch "https://raw.githubusercontent.com/BtbN/FFmpeg-Builds/master/patches/aribb24/12.patch"
         do_patch "https://raw.githubusercontent.com/BtbN/FFmpeg-Builds/master/patches/aribb24/13.patch"
         do_patch "https://raw.githubusercontent.com/BtbN/FFmpeg-Builds/master/patches/aribb24/17.patch"
@@ -2966,6 +2966,7 @@ if [[ $mpv != n ]] && pc_exists libavcodec libavformat libswscale libavfilter; t
     _deps=(lib{ass,avcodec,shaderc_combined,spirv-cross,placebo}.a "$MINGW_PREFIX"/lib/libuchardet.a)
     if do_vcs "$SOURCE_REPO_MPV"; then
         do_patch "https://github.com/mpv-player/mpv/compare/master...1480c1:mpv:initguid.patch" am
+        do_patch "https://github.com/mpv-player/mpv/pull/18328.patch" am
         do_uninstall share/man/man1/mpv.1 include/mpv share/doc/mpv etc/mpv "${_check[@]}"
         hide_conflicting_libs
         create_ab_pkgconfig
