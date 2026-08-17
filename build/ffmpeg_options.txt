@@ -13,7 +13,7 @@
 --enable-iconv
 --enable-lzma
 --enable-nvenc
---enable-schannel
+#--enable-schannel
 --enable-zlib
 --enable-sdl2
 --enable-ffnvcodec
@@ -37,7 +37,7 @@
 
 # Zeranoe
 --enable-fontconfig
-#--enable-gnutls
+--enable-gnutls
 --enable-libass
 --enable-libbluray
 --enable-libfreetype
