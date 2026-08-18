@@ -539,12 +539,12 @@ fi
 
 [[ $ffmpeg != no ]] && enabled gcrypt && do_pacman_install libgcrypt
 
-if [[ $curl = y ]]; then
+if [[ $curl = y ]] || { [[ $curl = n ]] && enabled libcurl; }; then
+    curl=schannel
     enabled libtls && curl=libressl
     enabled openssl && curl=openssl
     enabled gnutls && curl=gnutls
     enabled mbedtls && curl=mbedtls
-    [[ $curl = y ]] && curl=schannel
 fi
 
 if enabled_any gnutls librtmp || [[ $rtmpdump = y || $curl = gnutls ]]; then
@@ -626,7 +626,7 @@ fi
 
 if [[ $mediainfo = y || $bmx = y || $curl != n || $cyanrip = y ]]; then
     do_pacman_install brotli nghttp2
-    _check=(curl/curl.h libcurl.{{,l}a,pc})
+    _check=(curl/curl.h libcurl.{a,pc})
     case $curl in
     libressl) _deps=(libssl.a) ;;
     openssl) _deps=("$MINGW_PREFIX/lib/libssl.a") ;;
@@ -636,35 +636,43 @@ if [[ $mediainfo = y || $bmx = y || $curl != n || $cyanrip = y ]]; then
     esac
     [[ $standalone = y || $curl != n ]] && _check+=(bin-global/curl.exe)
     if do_vcs "$SOURCE_REPO_CURL"; then
-        do_uninstall include/curl bin-global/curl-config "${_check[@]}"
-        extra_opts=()
+        do_uninstall include/curl bin-global/curl-config libcurl.la lib/cmake/CURL "${_check[@]}"
+        extra_opts=(
+            -DBUILD_{CURL_EXE,SHARED_LIBS,TESTING,EXAMPLES}=OFF
+            -DBUILD_STATIC_{LIBS,CURL}=ON
+            -DENABLE_DEBUG=OFF
+            -DPICKY_COMPILER=OFF
+            -DCURL_USE_{CMAKECONFIG,LIBSSH2,SCHANNEL,GNUTLS,OPENSSL,MBEDTLS}=OFF
+            -DCURL_USE_{PKGCONFIG,LIBPSL}=ON
+            -DCURL_BROTLI=ON
+            -DCURL_WINDOWS_SSPI=ON
+            -D{BROTLI,NGHTTP2}_USE_STATIC_LIBS=ON
+            -DUSE_NGHTTP2=ON
+            -DCURL_CA_NATIVE=OFF
+            -DCURL_CA_{BUNDLE,PATH}=none
+            -DUNIX=OFF
+        )
+        [[ $standalone = y || $curl != n ]] && extra_opts+=(-DBUILD_CURL_EXE=ON)
         case $curl in
         libressl|openssl)
-            extra_opts+=(--with-{nghttp2,openssl} --without-{gnutls,mbedtls})
+            extra_opts+=(-DCURL_USE_OPENSSL=ON -DOPENSSL_USE_STATIC_LIBS=ON)
             ;;
-        mbedtls) extra_opts+=(--with-{mbedtls,nghttp2} --without-openssl) ;;
-        gnutls) extra_opts+=(--with-gnutls --without-{nghttp2,mbedtls,openssl}) ;;
-        *) extra_opts+=(--with-{schannel,winidn,nghttp2} --without-{gnutls,mbedtls,openssl});;
+        mbedtls) extra_opts+=(-DCURL_USE_MBEDTLS=ON) ;;
+        gnutls) extra_opts+=(-DCURL_USE_GNUTLS=ON) ;;
+        *) extra_opts+=(-DCURL_USE_SCHANNEL=ON -DUSE_WIN32_IDN=ON) ;;
         esac
-       
-        [[ ! -f configure || configure.ac -nt configure ]] &&
-            do_autoreconf
         [[ $curl = openssl ]] && hide_libressl
         hide_conflicting_libs
-        CPPFLAGS+=" -DGNUTLS_INTERNAL_BUILD -DNGHTTP2_STATICLIB -DPSL_STATIC" \
-            do_separate_confmakeinstall global "${extra_opts[@]}" \
-            --without-{libssh2,random,ca-bundle,ca-path,librtmp} \
-            --with-brotli --enable-sspi --disable-debug
+        CFLAGS+=" -DGNUTLS_INTERNAL_BUILD -DPSL_STATIC" \
+            do_cmakeinstall global "${extra_opts[@]}"
         hide_conflicting_libs -R
         [[ $curl = openssl ]] && hide_libressl -R
         if [[ $curl != schannel ]]; then
             _notrequired=true
-            cd_safe "build-$bits"
-            PATH=/usr/bin log ca-bundle make ca-bundle
+            PATH=/usr/bin:$PATH do_ninja curl-ca-bundle
             unset _notrequired
             [[ -f lib/ca-bundle.crt ]] &&
                 cp -f lib/ca-bundle.crt "$LOCALDESTDIR"/bin-global/curl-ca-bundle.crt
-            cd_safe ..
         fi
         do_checkIfExist
     fi
@@ -1305,7 +1313,6 @@ if { { [[ $ffmpeg != no ]] &&
         do_cmakeinstall -DLIBTYPE=STATIC -DALSOFT_UTILS=OFF -DALSOFT_EXAMPLES=OFF -DALSOFT_ENABLE_MODULES=OFF
     sed -i 's/Libs.private.*/& -luuid -lole32/' "$LOCALDESTDIR/lib/pkgconfig/openal.pc" # uuid is for FOLDERID_* stuff
     do_checkIfExist
-    unset _mingw_patches
 fi
 
 _check=(liblc3.a lc3.pc)
