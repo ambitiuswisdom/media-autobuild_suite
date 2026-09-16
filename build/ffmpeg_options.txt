@@ -123,6 +123,7 @@
 --enable-libcurl
 --enable-libqrencode
 --enable-libquirc
+--enable-libastcenc
 
 # Full plus options that add shared dependencies
 --enable-opencl
