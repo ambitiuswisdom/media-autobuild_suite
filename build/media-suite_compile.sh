@@ -421,9 +421,9 @@ elif [[ $ffmpeg != no ]] && enabled libastcenc; then
         # astc-encoder has no install target when only the static core is enabled.
         do_install "Source/astcenc.h" include/astc/astcenc/
         do_cmake builddir=astcenc -DASTCENC_CLI=OFF -DASTCENC_SHAREDLIB=OFF \
-            -DASTCENC_ISA_SSE2=ON -DASTCENC_WERROR=OFF
+            -DASTCENC_ISA_AVX2=ON -DASTCENC_WERROR=OFF
         do_ninja
-        do_install "Source/libastcenc-sse2-static.a" libastcenc.a
+        do_install "Source/libastcenc-avx2-static.a" libastcenc.a
         do_checkIfExist
     fi
 fi
