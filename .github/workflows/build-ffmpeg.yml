@@ -106,8 +106,6 @@ jobs:
         run: |
           $output = 'D:\mabs\artifacts'
           New-Item -ItemType Directory -Path $output -Force | Out-Null
-          $toolsOutput = Join-Path $output 'tools'
-          New-Item -ItemType Directory -Path $toolsOutput -Force | Out-Null
           
           # Copy doc folder
           Copy-Item -Path 'D:\mabs\local64\share\doc\ffmpeg' -Destination "$output\doc" -Recurse -Force
@@ -123,20 +121,6 @@ jobs:
             Get-Item -Path "$ffSource\$pattern" -ErrorAction SilentlyContinue | Copy-Item -Destination $output -Force
           }
 
-          # Copy optional tool executables into a single tools folder
-          $toolSources = @(
-            'D:\mabs\local64\bin-video\dovi_tool.exe',
-            'D:\mabs\local64\bin-global\gifski.exe'
-          )
-
-          foreach ($tool in $toolSources) {
-            if (Test-Path $tool) {
-              Copy-Item -Path $tool -Destination $toolsOutput -Force
-            } else {
-              Write-Host "Optional tool not found, skipping: $tool"
-            }
-          }
-
           $archive = "D:\mabs\ffmpeg-x64-${{ steps.run-script.outputs.timestamp }}.7z"
           Write-Host "Creating 7z archive: $archive"
           & 7z a -t7z $archive "$output\*" -mx=9 -mmt=on -mqs=on
@@ -147,6 +131,52 @@ jobs:
         with:
           path: D:\mabs\ffmpeg-x64-${{ steps.run-script.outputs.timestamp }}.7z
           if-no-files-found: error
+          archive: false
+
+      - name: Package extra tools
+        shell: pwsh
+        run: |
+          $toolsOutput = 'D:\mabs\extra-tools'
+          New-Item -ItemType Directory -Path $toolsOutput -Force | Out-Null
+          $toolSources = @(
+            @{
+              Directory = 'D:\mabs\local64\bin-global'
+              Files = @(
+                'gifski.exe',
+                'cjxl.exe',
+                'djxl.exe',
+                'cjpegli.exe'
+              )
+            }
+            @{
+              Directory = 'D:\mabs\local64\bin-video'
+              Files = @(
+                'dovi_tool.exe'
+              )
+            }
+          )
+
+          foreach ($source in $toolSources) {
+            foreach ($file in $source.Files) {
+              $tool = Join-Path $source.Directory $file
+              if (Test-Path $tool) {
+                Copy-Item -Path $tool -Destination $toolsOutput -Force
+              } else {
+                Write-Host "Optional tool not found, skipping: $tool"
+              }
+            }
+          }
+
+          $archive = 'D:\mabs\extra-tools.7z'
+          Push-Location $toolsOutput
+          & 7z a -t7z $archive '.\*.exe' -mx=9 -mmt=on -mqs=on
+          Pop-Location
+
+      - name: Upload extra tools
+        uses: actions/upload-artifact@v7
+        with:
+          name: extra-tools.7z
+          path: D:\mabs\extra-tools.7z
           archive: false
 
       - name: Upload bin folder file list
@@ -173,6 +203,13 @@ jobs:
           path: release-assets
           skip-decompress: true
 
+      - name: Download extra tools
+        uses: actions/download-artifact@v8
+        with:
+          name: extra-tools.7z
+          path: release-assets
+          skip-decompress: true
+
       - name: Publish to rolling release
         uses: ncipollo/release-action@v1
         with:
@@ -186,4 +223,4 @@ jobs:
           allowUpdates: true
           removeArtifacts: true
           artifactErrorsFailBuild: true
-          artifacts: release-assets/${{ needs.build.outputs.artifact_name }}
+          artifacts: "release-assets/${{ needs.build.outputs.artifact_name }},release-assets/extra-tools.7z"
