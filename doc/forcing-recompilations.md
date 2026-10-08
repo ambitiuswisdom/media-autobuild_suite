@@ -20,7 +20,6 @@ Most libs use pkg-config files to check if they exist, so for most libs in this 
     fontconfig
     freetype
     frei0r
-    gflags
     gnutls
     harfbuzz
     kvazaar
@@ -135,7 +134,7 @@ To recompile these, delete `<appname>.exe` in corresponding binary directories:
         speexenc
 
     /bin-global
-        cjpegl
+        cjpegli
         cjxl
         curl
         cwebp
