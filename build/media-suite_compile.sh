@@ -58,6 +58,7 @@ while true; do
     --libavif=* ) libavif=${1#*=} && shift ;;
     --libheif=* ) libheif=${1#*=} && shift ;;
     --jpegxl=* ) jpegxl=${1#*=} && shift ;;
+    --jpegli=* ) jpegli=${1#*=} && shift ;;
     --av1an=* ) av1an=${1#*=} && shift ;;
     --uvg266=* ) uvg266=${1#*=} && shift ;;
     --vvenc=* ) vvenc=${1#*=} && shift ;;
@@ -255,6 +256,18 @@ else
 fi
 unset _zlib_uninstall
 
+# libpng is shared by libaribb24, leptonica/tesseract, libwebp tools,
+# JPEG XL/JPEGli tools, libavif apps, and libheif tools. Keep it unconditional
+# instead of duplicating this growing dependency condition at each consumer.
+_deps=("$zlib_dir"/lib/libz.a)
+_check=(libpng.{pc,{,l}a} libpng16.{pc,{,l}a} libpng16/png.h)
+if do_vcs "$SOURCE_REPO_LIBPNG"; then
+    do_uninstall include/libpng16 "${_check[@]}"
+    do_autoupdate
+    do_separate_confmakeinstall --with-pic
+    do_checkIfExist
+fi
+
 _check=(bin-global/rg.exe)
 if [[ $ripgrep = y ]] &&
     do_vcs "$SOURCE_REPO_RIPGREP"; then
@@ -385,15 +398,6 @@ if [[ $ffmpeg != no ]] && enabled libaribcaption &&
 fi
 
 if [[ $ffmpeg != no ]] && enabled libaribb24; then
-    _deps=("$zlib_dir"/lib/libz.a)
-    _check=(libpng.{pc,{,l}a} libpng16.{pc,{,l}a} libpng16/png.h)
-    if do_vcs "$SOURCE_REPO_LIBPNG"; then
-        do_uninstall include/libpng16 "${_check[@]}"
-        do_autoupdate
-        do_separate_confmakeinstall --with-pic
-        do_checkIfExist
-    fi
-
     _deps=(libpng.{pc,a} libpng16.{pc,a})
     _check=(aribb24.pc libaribb24.{,l}a)
     if do_vcs "$SOURCE_REPO_ARIBB24"; then
@@ -653,7 +657,7 @@ if { { [[ $ffmpeg != no || $standalone = y ]] && enabled libtesseract; } ||
         do_checkIfExist
     fi
 
-    do_pacman_install libjpeg-turbo xz zlib zstd libdeflate
+    do_pacman_install libjpeg-turbo xz zstd libdeflate
     _deps=(libglut.a "$zlib_dir"/lib/libz.a)
     _check=(libtiff{.a,-4.pc})
     [[ $standalone = y ]] && _check+=(bin-global/tiff{cp,dump,info,set,split}.exe)
@@ -703,7 +707,7 @@ if [[ $ffmpeg != no || $standalone = y ]] && enabled libwebp; then
     fi
 fi
 
-if { [[ $jpegxl = y ]] || { [[ $ffmpeg != no ]] && enabled libjxl; } } ||
+if { [[ $jpegxl = y ]] || [[ $jpegli = y ]] || { [[ $ffmpeg != no ]] && enabled libjxl; } } ||
     ! mpv_disabled lcms2; then
     do_pacman_remove python-rst2pdf lcms2
     do_pacman_install libjpeg-turbo
@@ -722,17 +726,8 @@ if { [[ $jpegxl = y ]] || { [[ $ffmpeg != no ]] && enabled libjxl; } } ||
 fi
 
 if [[ $jpegxl = y ]] || { [[ $ffmpeg != no ]] && enabled libjxl; }; then
-    _check=(bin/gflags_completions.sh gflags.pc gflags/gflags.h libgflags{,_nothreads}.a)
-    if do_vcs "$SOURCE_REPO_GFLAGS"; then
-        do_patch "https://raw.githubusercontent.com/m-ab-s/mabs-patches/master/gflags/0001-cmake-chop-off-.lib-extension-from-shlwapi.patch" am
-        do_uninstall "${_check[@]}" lib/cmake/gflags include/gflags
-        do_cmakeinstall -D{BUILD,INSTALL}_STATIC_LIBS=ON -DBUILD_gflags_LIB=ON -DINSTALL_HEADERS=ON \
-            -DREGISTER_{BUILD_DIR,INSTALL_PREFIX}=OFF
-        do_checkIfExist
-    fi
-
     do_pacman_install brotli
-    _deps=(libgflags.a liblcms2.a)
+    _deps=(liblcms2.a)
     _check=(libjxl{{,_threads}.a,.pc} jxl/decode.h)
     [[ $jpegxl = y ]] && _check+=(bin-global/{{c,d}jxl,jxlinfo}.exe)
     if do_vcs "$SOURCE_REPO_LIBJXL"; then
@@ -742,11 +737,23 @@ if [[ $jpegxl = y ]] || { [[ $ffmpeg != no ]] && enabled libjxl; }; then
         [[ $jpegxl = y ]] || extracommands=("-DJPEGXL_ENABLE_TOOLS=OFF")
         CXXFLAGS+=" -DJXL_CMS_STATIC_DEFINE -DJXL_STATIC_DEFINE -DJXL_THREADS_STATIC_DEFINE $($PKG_CONFIG --cflags zlib)" \
             LDFLAGS+=" $($PKG_CONFIG --libs zlib)" \
-            do_cmakeinstall global -D{BUILD_TESTING,JPEGXL_ENABLE_{BENCHMARK,DOXYGEN,MANPAGES,OPENEXR,SKCMS,EXAMPLES}}=OFF \
+            do_cmakeinstall global -D{BUILD_TESTING,JPEGXL_ENABLE_{BENCHMARK,DOXYGEN,JNI,MANPAGES,OPENEXR,SJPEG,SKCMS,EXAMPLES}}=OFF \
             -DJPEGXL_{FORCE_SYSTEM_{BROTLI,LCMS2},STATIC}=ON "${extracommands[@]}"
         do_checkIfExist
         unset extracommands
     fi
+fi
+
+_deps=(liblcms2.a)
+_check=(bin-global/{c,d}jpegli.exe)
+if [[ $jpegli = y ]] &&
+    do_vcs "$SOURCE_REPO_JPEGLI"; then
+    do_git_submodule
+    do_uninstall "${_check[@]}"
+    do_cmakeinstall global -DBUILD_TESTING=OFF \
+        -DJPEGLI_ENABLE_{BENCHMARK,DOXYGEN,FUZZERS,JNI,MANPAGES,OPENEXR,SJPEG,SKCMS}=OFF \
+        -DJPEGLI_{FORCE_SYSTEM_LCMS2,STATIC}=ON -DJPEGLI_ENABLE_TOOLS=ON
+    do_checkIfExist
 fi
 
 _check=(libqrencode.a libqrencode.pc qrencode.h)
@@ -2588,8 +2595,6 @@ if [[ $libheif != n ]] &&
     do_pacman_remove python-rst2pdf
 
     do_pacman_install libjpeg-turbo
-    pc_exists "libpng" || do_pacman_install libpng
-
     do_patch https://raw.githubusercontent.com/m-ab-s/mabs-patches/master/libheif/0001-Edit-CMakeLists.patch
     grep_and_sed 'SvtAv1PredStructure' libheif/plugins/encoder_svt.cc 's/SvtAv1PredStructure/PredStructure/g;s/SVT_AV1_PRED_//g'
 

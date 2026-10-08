@@ -31,13 +31,13 @@ SOURCE_REPO_FONTCONFIG=https://gitlab.freedesktop.org/fontconfig/fontconfig.git#
 SOURCE_REPO_FREETYPE=https://github.com/freetype/freetype.git#tag=LATEST
 SOURCE_REPO_FREI0R=https://github.com/dyne/frei0r.git
 SOURCE_REPO_FRIBIDI=https://github.com/fribidi/fribidi.git
-SOURCE_REPO_GFLAGS=https://github.com/gflags/gflags.git
 SOURCE_REPO_GIFSKI=https://github.com/ImageOptim/gifski.git
 SOURCE_REPO_GLSLANG=https://github.com/KhronosGroup/glslang.git
 SOURCE_REPO_GPAC=https://github.com/gpac/gpac.git
 SOURCE_REPO_HARFBUZZ=https://github.com/harfbuzz/harfbuzz.git
 SOURCE_REPO_HDR10PLUS_TOOL=https://github.com/quietvoid/hdr10plus_tool.git
 SOURCE_REPO_JO=https://github.com/jpmens/jo.git
+SOURCE_REPO_JPEGLI=https://github.com/google/jpegli.git
 SOURCE_REPO_JQ=https://github.com/jqlang/jq.git
 SOURCE_REPO_LCMS2=https://github.com/mm2/Little-CMS.git
 SOURCE_REPO_LENSFUN=https://github.com/lensfun/lensfun.git
