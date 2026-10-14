@@ -91,6 +91,7 @@
 --enable-libdavs2
 --enable-libdvdnav
 --enable-libdvdread
+--enable-libfdk-xhe-aac
 --enable-libflite
 --enable-libfribidi
 --enable-libgme
