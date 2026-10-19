@@ -1,0 +1,226 @@
+name: Build FFmpeg (media-autobuild_suite)
+
+on:
+  push:
+    branches: [ "deploy" ]
+  pull_request:
+    branches: [ "deploy" ]
+  schedule:
+    - cron: '0 0 */5 * *'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 360
+    outputs:
+      timestamp: ${{ steps.run-script.outputs.timestamp }}
+      artifact_name: ffmpeg-x64-${{ steps.run-script.outputs.timestamp }}.7z
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Prepare short workspace path
+        shell: pwsh
+        run: |
+          if (Test-Path 'D:\mabs') {
+            Remove-Item -Path 'D:\mabs' -Recurse -Force
+          }
+          New-Item -ItemType Directory -Path 'D:\mabs' | Out-Null
+          Copy-Item -Path "$env:GITHUB_WORKSPACE\*" -Destination 'D:\mabs' -Recurse -Force
+
+      - name: Cache build cache
+        uses: actions/cache@v6
+        with:
+          path: D:\mabs\build\cache
+          key: ${{ runner.os }}-mabs-build-cache-${{ hashFiles('build/**', 'media-autobuild_suite.bat') }}
+          restore-keys: |
+            ${{ runner.os }}-mabs-build-cache-
+
+      - id: run-script
+        name: Build FFmpeg Windows x64 shared
+        shell: pwsh
+        run: |
+          $work = 'D:\mabs'
+          Push-Location $work
+          Write-Host "Starting media-autobuild_suite.bat in $work"
+          & cmd.exe /c "call "$work\media-autobuild_suite.bat""
+
+          # The suite uses the presence of build/logs.zip to indicate a failed build.
+          $logs = Join-Path $work 'build\logs.zip'
+          New-Item -Path "$work\build" -ItemType Directory -Force | Out-Null
+          if (Test-Path $logs) {
+            Write-Host "::error::Detected failure artifact: $logs"
+            Pop-Location
+            exit 1
+          } else {
+            Write-Host 'No logs.zip found; treating run as success.'
+          }
+
+          Pop-Location
+
+          # Output timestamp for later steps
+          $timestamp = Get-Date -Format 'yyyyMMdd_HHmmss'
+          "timestamp=$timestamp" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding ASCII -Append
+          exit 0
+
+      - name: Upload error logs
+        if: failure() && steps.run-script.conclusion == 'failure'
+        uses: actions/upload-artifact@v7
+        with:
+          path: D:\mabs\build\logs.zip
+          if-no-files-found: error
+          archive: false
+
+      - name: Export output file list CSV
+        shell: pwsh
+        run: |
+          $report = 'D:\mabs\output.csv'
+          $folders = @(
+            'D:\mabs\local64\bin-video',
+            'D:\mabs\local64\bin-audio',
+            'D:\mabs\local64\bin-global'
+          )
+
+          $records = foreach ($folder in $folders) {
+            if (Test-Path $folder) {
+              Get-ChildItem -Path $folder -File -Recurse |
+                Sort-Object FullName |
+                ForEach-Object {
+                  [pscustomobject]@{
+                    Folder = ((Split-Path $folder -Leaf) + '\' + [System.IO.Path]::GetRelativePath($folder, $_.DirectoryName)).TrimEnd('\', '.')
+                    FileName = $_.Name
+                    SizeKB = [math]::Round($_.Length / 1KB)
+                    WriteTimeUtc = $_.LastWriteTimeUtc.ToString('yyyy-MM-dd HH:mm:ss')
+                  }
+                }
+            }
+          }
+
+          $records | Export-Csv -Path $report -NoTypeInformation -Encoding UTF8
+          if (!(Test-Path $report)) { throw "Failed to create file list report: $report" }
+
+      - name: Organize build artifacts
+        shell: pwsh
+        run: |
+          $output = 'D:\mabs\artifacts'
+          New-Item -ItemType Directory -Path $output -Force | Out-Null
+          
+          # Copy doc folder
+          Copy-Item -Path 'D:\mabs\local64\share\doc\ffmpeg' -Destination "$output\doc" -Recurse -Force
+          
+          # Copy ffmpeg bin files
+          $ffSource = 'D:\mabs\local64\bin-video'
+          $ffbin = @(
+            'avcodec-*.dll', 'avdevice-*.dll', 'avfilter-*.dll', 'avformat-*.dll', 'avutil-*.dll',
+            'ffmpeg.exe', 'ffplay.exe', 'ffprobe.exe', 'swresample-*.dll', 'swscale-*.dll'
+          )
+          
+          foreach ($pattern in $ffbin) {
+            Get-Item -Path "$ffSource\$pattern" -ErrorAction SilentlyContinue | Copy-Item -Destination $output -Force
+          }
+
+          $archive = "D:\mabs\ffmpeg-x64-${{ steps.run-script.outputs.timestamp }}.7z"
+          Write-Host "Creating 7z archive: $archive"
+          & 7z a -t7z $archive "$output\*" -mx=9 -mmt=on -mqs=on
+          if (!(Test-Path $archive)) { throw "Failed to create archive: $archive" }
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          path: D:\mabs\ffmpeg-x64-${{ steps.run-script.outputs.timestamp }}.7z
+          if-no-files-found: error
+          archive: false
+
+      - name: Package extra tools
+        shell: pwsh
+        run: |
+          $toolsOutput = 'D:\mabs\extra-tools'
+          New-Item -ItemType Directory -Path $toolsOutput -Force | Out-Null
+          $toolSources = @(
+            @{
+              Directory = 'D:\mabs\local64\bin-global'
+              Files = @(
+                'gifski.exe',
+                'cjxl.exe',
+                'djxl.exe',
+                'cjpegli.exe'
+              )
+            }
+            @{
+              Directory = 'D:\mabs\local64\bin-video'
+              Files = @(
+                'dovi_tool.exe'
+              )
+            }
+          )
+
+          foreach ($source in $toolSources) {
+            foreach ($file in $source.Files) {
+              $tool = Join-Path $source.Directory $file
+              if (Test-Path $tool) {
+                Copy-Item -Path $tool -Destination $toolsOutput -Force
+              } else {
+                Write-Host "Optional tool not found, skipping: $tool"
+              }
+            }
+          }
+
+          $archive = 'D:\mabs\extra-tools.7z'
+          Push-Location $toolsOutput
+          & 7z a -t7z $archive '.\*.exe' -mx=9 -mmt=on -mqs=on
+          Pop-Location
+
+      - name: Upload extra tools
+        uses: actions/upload-artifact@v7
+        with:
+          name: extra-tools.7z
+          path: D:\mabs\extra-tools.7z
+          archive: false
+
+      - name: Upload bin folder file list
+        uses: actions/upload-artifact@v7
+        with:
+          name: bin-folder-file-list-${{ steps.run-script.outputs.timestamp }}
+          path: D:\mabs\output.csv
+          if-no-files-found: error
+          archive: false
+
+  publish:
+    name: Publish rolling release
+    needs: build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/deploy'
+    runs-on: ubuntu-slim
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ needs.build.outputs.artifact_name }}
+          path: release-assets
+          skip-decompress: true
+
+      - name: Download extra tools
+        uses: actions/download-artifact@v8
+        with:
+          name: extra-tools.7z
+          path: release-assets
+          skip-decompress: true
+
+      - name: Publish to rolling release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ffmpeg-latest
+          name: Autobuild - ${{ needs.build.outputs.timestamp }}
+          body: |
+            Automated rolling release of FFmpeg Windows x64 shared.
+
+            - Action: ${{ github.run_number }}
+            - Builder Commit: ${{ github.sha }}
+          allowUpdates: true
+          removeArtifacts: true
+          artifactErrorsFailBuild: true
+          artifacts: "release-assets/${{ needs.build.outputs.artifact_name }},release-assets/extra-tools.7z"

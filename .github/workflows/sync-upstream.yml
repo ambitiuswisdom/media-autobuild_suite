@@ -1,0 +1,56 @@
+name: Sync upstream master
+
+on:
+  schedule:
+    - cron: '0 0 */2 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-slim
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      repo: ${{ github.repository }}
+
+    steps:
+      - id: sync_upstream
+        name: Sync from upstream
+        shell: bash
+        run: |
+          local_head=$(gh api "repos/$repo/git/ref/heads/master" --jq '.object.sha')
+          upstream_head=$(gh api "repos/m-ab-s/media-autobuild_suite/git/ref/heads/master" --jq '.object.sha')
+
+          if [ "$local_head" = "$upstream_head" ]; then
+            echo "::notice::master is already in sync with upstream/master."
+            echo "updated=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Syncing master from $local_head to $upstream_head ..."
+          gh repo sync "$repo" --branch master --source m-ab-s/media-autobuild_suite
+          echo "::notice::master has been updated from upstream/master."
+          echo "updated=true" >> "$GITHUB_OUTPUT"
+
+      - name: Open PR to deploy
+        if: steps.sync_upstream.outputs.updated == 'true'
+        shell: bash
+        run: |
+          head="master"
+          base="deploy"
+
+          # List open PRs from master -> deploy; output lines like: "<number> <url>"
+          prs=$(gh pr list --repo "$repo" --state open --head "$head" --base "$base" --json number,url --jq '.[] | "\(.number) \(.url)"')
+
+          if [ -n "$prs" ]; then
+            echo "Existing open PR found; skipping PR creation."
+            echo "$prs"
+            exit 0
+          fi
+
+          gh pr create --repo "$repo" --title "Sync master to deploy" \
+            --body $'Automated pull request created after synchronizing master with upstream/master.\n\nPlease review and merge manually when ready.' \
+            --base "$base" --head "master"

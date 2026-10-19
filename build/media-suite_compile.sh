@@ -378,9 +378,9 @@ if [[ $ffmpeg != no ]] && enabled libastcenc; then
         # astc-encoder has no install target when only the static core is enabled.
         do_install "Source/astcenc.h" include/astc/astcenc/
         do_cmake builddir=astcenc -DASTCENC_CLI=OFF -DASTCENC_SHAREDLIB=OFF \
-            -DASTCENC_ISA_SSE2=ON -DASTCENC_WERROR=OFF
+            -DASTCENC_ISA_AVX2=ON -DASTCENC_WERROR=OFF
         do_ninja
-        do_install "Source/libastcenc-sse2-static.a" libastcenc.a
+        do_install "Source/libastcenc-avx2-static.a" libastcenc.a
         do_checkIfExist
     fi
 fi
@@ -1941,7 +1941,7 @@ if [[ $x264 != no ]] ||
         check_custom_patches
         create_build_dir
         extra_script pre configure
-        PKGCONFIG="$PKG_CONFIG" CFLAGS="${CFLAGS// -O2 / }" \
+        PKGCONFIG="$PKG_CONFIG" CFLAGS="${CFLAGS// -O3 / }" \
             log configure ../configure "${extracommands[@]}"
         extra_script post configure
         do_make
@@ -2217,6 +2217,22 @@ if [[ $ffmpeg != no ]] && enabled libxevd &&
     do_checkIfExist
 fi
 
+_check=(wels/codec_{api,ver}.h libopenh264.a openh264.pc)
+if [[ $ffmpeg != no ]] && enabled libopenh264 &&
+    do_vcs "$SOURCE_REPO_OPENH264"; then
+    do_uninstall "${_check[@]}"
+    do_mesoninstall video -Dtests=disabled
+    do_checkIfExist
+fi
+
+_check=(wels/codec_{api,ver}.h libopenh264.a openh264.pc)
+if [[ $ffmpeg != no ]] && enabled libopenh264 &&
+    do_vcs "$SOURCE_REPO_OPENH264"; then
+    do_uninstall "${_check[@]}"
+    do_mesoninstall video -Dtests=disabled
+    do_checkIfExist
+fi
+
 _check=(bin-video/oapv_app_{enc,dec}.exe oapv/oapv.h liboapv.a oapv.pc)
 if [[ $ffmpeg != no ]] && enabled liboapv &&
     do_vcs "$SOURCE_REPO_OPENAPV"; then
@@ -2372,39 +2388,6 @@ if [[ $ffmpeg != no ]]; then
         $'/^Cflags:/a\\\nCflags.private: -DCACA_STATIC\n/Requires:/s|[[:blank:]]*$| zlib|;s|[[:blank:]]+-lz||'
     enabled libmodplug && do_addOption --extra-cflags=-DMODPLUG_STATIC && do_pacman_install libmodplug
     enabled libopenjpeg && do_pacman_install openjpeg2
-    if enabled libopenh264; then
-        # We use msys2's package for the header and import library so we don't build it, for licensing reasons
-        do_pacman_install openh264
-        if [[ -f $MINGW_PREFIX/lib/libopenh264.dll.a.dyn ]]; then
-            # backup the static library
-            mv -f "$MINGW_PREFIX"/lib/libopenh264.a{,.bak}
-            # use the import library as a phony static library, as mpv doesn't look for .dll.a
-            mv -f "$MINGW_PREFIX"/lib/libopenh264.{dll.a.dyn,a}
-        fi
-        [[ -f $MINGW_PREFIX/lib/libopenh264.dll.a ]] && mv -f "$MINGW_PREFIX"/lib/libopenh264.{dll.,}a
-        _openh264_ver=2.6.0
-        _pacman_openh264_ver=$(pacman -Q "${MINGW_PACKAGE_PREFIX}-openh264" | awk '{print $2}')
-        if [[ $(vercmp.exe $_openh264_ver "$_pacman_openh264_ver") -ne 0 ]]; then
-            do_simple_print "${orange}Openh264 version differs from msys2's, current: $_openh264_ver, msys2: $_pacman_openh264_ver${reset}"
-            do_simple_print "${orange}Check if this is the latest suite and update if possible, else open an issue${reset}"
-        fi
-        if test_newer "$MINGW_PREFIX"/lib/libopenh264.dll.a "$LOCALDESTDIR/bin-video/libopenh264-7.dll" ||
-            ! get_dll_version "$LOCALDESTDIR/bin-video/libopenh264-7.dll" | grep -q "$_openh264_ver"; then
-            pushd "$LOCALDESTDIR/bin-video" >/dev/null || do_exit_prompt "Did you delete the bin-video folder?"
-            if [[ $bits = 64bit ]]; then
-                _sha256=dab5f2a872777f9a58b69bfa9fbcf20d9f82f2d6ec91383fd70bff49bd34ac9f
-            else
-                _sha256=a9445ed1fa2ce9665b22461a7ed0aeb52274add899aa55a93ef6278dbc17c90d
-            fi
-            do_wget -c -r -q -h $_sha256 \
-            "http://ciscobinary.openh264.org/openh264-${_openh264_ver}-win${bits%bit}.dll.bz2" \
-                libopenh264.dll.bz2
-            [[ -f libopenh264.dll.bz2 ]] && bunzip2 -f libopenh264.dll.bz2
-            mv -f libopenh264.dll libopenh264-7.dll
-            popd >/dev/null || do_exit_prompt "Did you delete the previous folder?"
-        fi
-        unset _sha256 _openh264_ver
-    fi
     enabled chromaprint && do_addOption --extra-cflags=-DCHROMAPRINT_NODLL &&
         { do_pacman_remove fftw; do_pacman_install chromaprint; }
     if enabled libzmq; then
@@ -2499,7 +2482,7 @@ if [[ $ffmpeg != no ]]; then
             "$LOCALDESTDIR"/bin-video/{sw{scale,resample},postproc}.lib
             )
         _check=()
-        sedflags="prefix|bindir|extra-version|pkg-config-flags"
+        sedflags="prefix|bindir|shlibdir|cc|cxx|ld|pkg-config(-flags)?|extra-(cflags|cxxflags|ldflags|libs|version)"
 
         # --build-suffix handling
         opt_exists FFMPEG_OPTS "^--build-suffix=[a-zA-Z0-9-]+$" &&

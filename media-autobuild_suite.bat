@@ -1986,7 +1986,7 @@ goto :EOF
     echo.PKG_CONFIG_PATH="${LOCALDESTDIR}/lib/pkgconfig:${MINGW_PREFIX}/lib/pkgconfig"
     echo.
     echo.CFLAGS="-D_FORTIFY_SOURCE=2 -fstack-protector-strong" # security related flags
-    echo.CFLAGS+=" -mtune=generic -O2 -pipe" # performance related flags
+    echo.CFLAGS+=" -mtune=generic -O3 -pipe -march=x86-64-v3" # performance related flags
     echo.CFLAGS+=" -D__USE_MINGW_ANSI_STDIO=1" # mingw-w64 specific flags for c99 printf
     echo.CXXFLAGS="${CFLAGS}" # copy CFLAGS to CXXFLAGS
     echo.LDFLAGS="${CFLAGS} -static-libgcc" # copy CFLAGS to LDFLAGS
@@ -2007,6 +2007,10 @@ goto :EOF
     echo.export DXSDK_DIR ACLOCAL_PATH PKG_CONFIG PKG_CONFIG_PATH CFLAGS CXXFLAGS LDFLAGS
     echo.
     echo.export CARGO_HOME="/opt/cargo"
+    echo.if [[ -z "${MABS_ORIGINAL_RUSTFLAGS+x}" ]]; then
+    echo.    MABS_ORIGINAL_RUSTFLAGS="$RUSTFLAGS"
+    echo.fi
+    echo.export RUSTFLAGS="${MABS_ORIGINAL_RUSTFLAGS:+$MABS_ORIGINAL_RUSTFLAGS }-C target-cpu=x86-64-v3"
     echo.if [[ -z "$CCACHE_DIR" ]]; then
     echo.    export CCACHE_DIR="${LOCALBUILDDIR}/cache"
     echo.fi
