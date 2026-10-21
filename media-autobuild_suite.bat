@@ -100,10 +100,10 @@ do if %%f lss 4 (
 set build=%instdir%\build
 if not exist %build% mkdir %build%
 
-set msyspackages=autoconf-archive autogen autotools base base-devel filesystem msys2-runtime ^
-pacutils unzip winpty
+set msyspackages=autoconf-archive autogen base base-devel filesystem msys2-runtime pacutils ^
+unzip winpty
 
-set mingwpackages=7zip ccache cmake dlfcn gettext-tools git meson nasm ninja toolchain
+set mingwpackages=7zip autotools ccache cmake dlfcn git meson nasm ninja toolchain
 
 :: built-ins
 set ffmpeg_options_builtin=--disable-autodetect amf bzlib cuda cuda-llvm cuvid d3d11va d3d12va ^
@@ -128,7 +128,7 @@ libsvthevc libsvtjpegxs libsvtvp9 libtesseract libuavs3d libvvdec libvvenc libxa
 libxevd libxeve libzmq libzvbi openal vapoursynth vulkan
 
 :: options also available with the suite that add shared dependencies
-set ffmpeg_options_full_shared=libopenh264 opencl opengl
+set ffmpeg_options_full_shared=libopenh264 opencl
 
 :: built-ins
 set mpv_options_builtin="#-Dcplayer=true" #manpage-build #lua #javascript ^
@@ -816,8 +816,8 @@ if [0]==[%ffmpegB2INI%] (
     echo. compiled shared so they take less space. Currently broken if libass or libass
     echo. dependees are enabled.
     echo. Option 6 produces static and shared ffmpeg and ffmpeg libs where the static
-    echo. one includes only strictly static dependencies (opencl, opengl,
-    echo. libopenh264 are hard disabled.^)
+    echo. one includes only strictly static dependencies (opencl, libopenh264 are
+    echo. hard disabled.^)
     echo.
     echo -------------------------------------------------------------------------------
     echo -------------------------------------------------------------------------------
@@ -1702,23 +1702,18 @@ if not exist %instdir%\mintty.lnk (
     title second msys2 update
     call :runBash secondUpdate.log pacman --noconfirm -Syu --asdeps
 
-    (
-        echo.Set Shell = CreateObject("WScript.Shell"^)
-        echo.Set link = Shell.CreateShortcut("%instdir%\mintty.lnk"^)
-        if %CC%==clang (
-            echo.link.Arguments = "-full-path -clang64 -where .."
-        ) else (
-            echo.link.Arguments = "-full-path -ucrt64 -where .."
-        )
-        echo.link.Description = "msys2 shell console"
-        echo.link.TargetPath = "%instdir%\msys64\msys2_shell.cmd"
-        echo.link.WindowStyle = 1
-        echo.link.IconLocation = "%instdir%\msys64\msys2.ico"
-        echo.link.WorkingDirectory = "%instdir%\msys64"
-        echo.link.Save
-    )>%build%\setlink.vbs
-    cscript /B /Nologo %build%\setlink.vbs
-    del %build%\setlink.vbs
+    powershell -NoProfile -Noninteractive -Command ^
+        "$msys = Join-Path $env:instdir 'msys64';" ^
+        "$msystem = if ($env:CC -eq 'clang') { 'clang64' } else { 'ucrt64' };" ^
+        "$link = (New-Object -ComObject WScript.Shell).CreateShortcut(" ^
+        "    (Join-Path $env:instdir 'mintty.lnk'));" ^
+        "$link.Arguments = '-full-path -{0} -where ..' -f $msystem;" ^
+        "$link.Description = 'msys2 shell console';" ^
+        "$link.TargetPath = Join-Path $msys 'msys2_shell.cmd';" ^
+        "$link.WindowStyle = 1;" ^
+        "$link.IconLocation = Join-Path $msys 'msys2.ico';" ^
+        "$link.WorkingDirectory = $msys;" ^
+        "$link.Save()"
 )
 
 rem createFolders

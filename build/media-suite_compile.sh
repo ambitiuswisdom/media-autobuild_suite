@@ -385,10 +385,6 @@ if [[ $ffmpeg != no ]] && enabled libastcenc; then
     fi
 fi
 
-# Fixes an issue with ordering with libbluray libxml2 and libz and liblzma
-# Probably caused by https://gitlab.gnome.org/GNOME/libxml2/-/commit/93e8bb2a402012858500b608b4146cd5c756e34d
-grep_or_sed Requires.private "$LOCALDESTDIR/lib/pkgconfig/libxml-2.0.pc" 's/Requires:/Requires.private:/'
-
 _check=(aribcaption/aribcaption.h libaribcaption.{a,pc})
 if [[ $ffmpeg != no ]] && enabled libaribcaption &&
     do_vcs "$SOURCE_REPO_ARIBCAPTION"; then
@@ -774,14 +770,7 @@ if [[ $ffmpeg != no ]] && enabled libquirc &&
     do_checkIfExist
 fi
 
-if files_exist bin-video/OpenCL.dll; then
-    opencldll=$LOCALDESTDIR/bin-video/OpenCL.dll
-else
-    syspath=$(cygpath -S)
-    opencldll=$syspath/OpenCL.dll
-    unset syspath
-fi
-if [[ $ffmpeg != no && -f $opencldll ]] && enabled opencl; then
+if [[ $ffmpeg != no ]] && enabled opencl; then
     do_simple_print "${orange}FFmpeg and related apps will depend on OpenCL.dll$reset"
     do_pacman_remove opencl-headers
     _check=(CL/cl.h)
@@ -791,20 +780,19 @@ if [[ $ffmpeg != no && -f $opencldll ]] && enabled opencl; then
         do_checkIfExist
     fi
     _check=(libOpenCL.a)
-    if test_newer installed "$opencldll" "${_check[@]}"; then
-        cd_safe "$LOCALBUILDDIR"
-        [[ -d opencl ]] && rm -rf opencl
-        mkdir -p opencl && cd_safe opencl
+    cd_safe "$LOCALBUILDDIR"
+    mkdir -p opencl && cd_safe opencl
+    if do_wget -c -r -n \
+        "https://raw.githubusercontent.com/KhronosGroup/OpenCL-ICD-Loader/main/loader/windows/OpenCL.def" &&
+        test_newer "$PWD/OpenCL.def" "$(file_installed libOpenCL.a)"; then
+        do_uninstall "${_check[@]}"
         create_build_dir
-        gendef "$opencldll" >/dev/null 2>&1
-        [[ -f OpenCL.def ]] && do_dlltool libOpenCL.a OpenCL.def
-        [[ -f libOpenCL.a ]] && do_install libOpenCL.a
+        # Generate only the import library; OpenCL.dll is provided at runtime.
+        do_dlltool libOpenCL.a ../OpenCL.def -D OpenCL.dll
+        do_install libOpenCL.a
         do_checkIfExist
     fi
-else
-    do_removeOption --enable-opencl
 fi
-unset opencldll
 
 if { [[ $ffmpeg != no || $standalone = y ]] && enabled libtesseract; } ||
     ! mpv_disabled libarchive; then
@@ -1047,12 +1035,11 @@ if [[ $standalone = y ]] && enabled libvorbis &&
     unset extracommands
 fi
 
-_check=(libopus.{,l}a opus.pc opus/opus.h)
+_check=(libopus.a opus.pc opus/opus.h)
 if enabled libopus && do_vcs "$SOURCE_REPO_OPUS"; then
     do_pacman_remove opus
     do_uninstall include/opus "${_check[@]}"
-    do_autoreconf
-    do_separate_confmakeinstall --disable-{stack-protector,doc,extra-programs}
+    do_cmakeinstall -DOPUS_BUILD_{PROGRAMS,SHARED_LIBRARY,TESTING}=OFF
     do_checkIfExist
 fi
 
@@ -1628,11 +1615,7 @@ if { { [[ $ffmpeg != no ]] && enabled libbluray; } || ! mpv_disabled libbluray; 
     if ! enabled libxml2; then
         extracommands+=(-Dlibxml2=disabled)
     fi
-    CFLAGS+=" $(enabled libxml2 && echo "-DLIBXML_STATIC")" \
-        do_mesoninstall -Dfontconfig=disabled -Dfreetype=disabled "${extracommands[@]}"
-    if enabled libxml2; then
-        sed -ri 's;(Cflags.*);\1 -DLIBXML_STATIC;' $LOCALDESTDIR/lib/pkgconfig/libbluray.pc
-    fi
+    do_mesoninstall -Dfontconfig=disabled -Dfreetype=disabled "${extracommands[@]}"
     do_checkIfExist
     PATH=$OLD_PATH
     unset extracommands JDK_HOME JAVA_HOME OLD_PATH
@@ -2111,7 +2094,7 @@ if enabled librist; then
 fi
 
 _vapoursynth_install() {
-    _vsver=80
+    _vsver=81
     _vspyver=312
 
     _check=(vapoursynth.pc vapoursynth/{VS{Constants4,Helper4,Script4},VapourSynth4}.h)
@@ -2405,7 +2388,6 @@ if [[ $ffmpeg != no ]]; then
             $'/^Cflags:/a\\\nCflags.private: -DZMQ_STATIC\ns/-lpthread/& -lws2_32/'
     fi
     enabled frei0r && do_addOption --extra-libs=-lpsapi
-    enabled libxml2 && do_addOption --extra-cflags=-DLIBXML_STATIC
     enabled ladspa && do_pacman_install ladspa-sdk
     if enabled vapoursynth && pc_exists "vapoursynth"; then
         _ver=$($PKG_CONFIG --modversion vapoursynth)
@@ -2853,7 +2835,7 @@ if [[ $cyanrip = y ]]; then
         _extra_ldflags=("$(cygpath -m "$LOCALDESTDIR/opt/cyanffmpeg/lib")"
             "$(cygpath -m "$LOCALDESTDIR/lib")")
         hide_conflicting_libs "$LOCALDESTDIR/opt/cyanffmpeg"
-        CFLAGS+=" -DLIBXML_STATIC $(printf ' -I%s' "${_extra_cflags[@]}")" \
+        CFLAGS+=" $(printf ' -I%s' "${_extra_cflags[@]}")" \
         LDFLAGS+="$(printf ' -L%s' "${_extra_ldflags[@]}")" \
             do_mesoninstall audio
         hide_conflicting_libs -R "$LOCALDESTDIR/opt/cyanffmpeg"
@@ -3112,7 +3094,7 @@ EOF
             --enable-{shared,avcodec,merge-ffmpeg,qt,nls} \
             --disable-{static,dbus,fluidsynth,svgdec,aom,mod,ncurses,mpg123,notify,svg,secret,telx,ssp,lua,gst-decode,nvdec} \
             --with-binary-version="MABS" BUILDCC="$CC" \
-            CFLAGS="$CFLAGS -DGLIB_STATIC_COMPILATION -DQT_STATIC -DGNUTLS_INTERNAL_BUILD -DLIBXML_STATIC -DLIBXML_CATALOG_ENABLED" \
+            CFLAGS="$CFLAGS -DGLIB_STATIC_COMPILATION -DQT_STATIC -DGNUTLS_INTERNAL_BUILD -DLIBXML_CATALOG_ENABLED" \
             LIBS="$($PKG_CONFIG --libs libcddb regex iconv) -lwsock32 -lws2_32 -lpthread -liphlpapi"
         do_makeinstall
         do_checkIfExist
