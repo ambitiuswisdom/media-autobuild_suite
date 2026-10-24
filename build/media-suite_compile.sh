@@ -2380,8 +2380,12 @@ if [[ $ffmpeg != no ]]; then
         $'/^Cflags:/a\\\nCflags.private: -DCACA_STATIC\n/Requires:/s|[[:blank:]]*$| zlib|;s|[[:blank:]]+-lz||'
     enabled libmodplug && do_addOption --extra-cflags=-DMODPLUG_STATIC && do_pacman_install libmodplug
     enabled libopenjpeg && do_pacman_install openjpeg2
-    enabled chromaprint && do_addOption --extra-cflags=-DCHROMAPRINT_NODLL &&
-        { do_pacman_remove fftw; do_pacman_install chromaprint; }
+    if enabled chromaprint; then
+        do_pacman_remove fftw
+        do_pacman_install chromaprint
+        grep_or_sed 'CHROMAPRINT_NODLL' "$MINGW_PREFIX/lib/pkgconfig/libchromaprint.pc" \
+            $'/^Cflags:/a\\\nCflags.private: -DCHROMAPRINT_NODLL'
+    fi
     if enabled libzmq; then
         do_pacman_install zeromq
         grep_or_sed 'ZMQ_STATIC' "$MINGW_PREFIX/lib/pkgconfig/libzmq.pc" \
