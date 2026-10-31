@@ -20,7 +20,7 @@ For information about the compiler environment see the wiki, there you also have
 
 - FFmpeg (shared or static) with these libraries and features (all optional, but enabled by default unless said otherwise; subject to license and platform restrictions):
     - Light build:
-        - amf (AMD AMF headers, git)
+        - amf (AMD AMF headers, MSYS2 package)
         - bzlib (MSYS2 package)
         - cuda (built-in)
         - cuda-llvm (built-in)
@@ -129,6 +129,7 @@ For information about the compiler environment see the wiki, there you also have
         - libkvazaar (git)
         - lcms2 (git)
         - liblc3 (git)
+        - liblcevc-dec (git)
         - liblensfun (git)
             - disabled by default
         - libmodplug (MSYS2 package)
@@ -140,6 +141,7 @@ For information about the compiler environment see the wiki, there you also have
         - libquirc (git)
         - librist (git)
         - librtmp (git)
+            - disabled by default
         - librubberband (git)
         - libssh (MSYS2 package)
         - libsvthevc (git) (using non-upstream patch)
@@ -160,6 +162,7 @@ For information about the compiler environment see the wiki, there you also have
         - vulkan (git)
     - Full shared dependencies (in addition to Full)
         - libopenh264 (official binaries)
+            - disabled by default
         - opencl (headers and import definitions from Khronos git)
             - requires OpenCL.dll and an OpenCL implementation at runtime
 

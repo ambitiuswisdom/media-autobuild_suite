@@ -2,7 +2,6 @@
 # shellcheck disable=SC2034
 
 # Dependency References
-SOURCE_REPO_AMF=https://github.com/GPUOpen-LibrariesAndSDKs/AMF.git
 SOURCE_REPO_ASTCENC=https://github.com/ARM-software/astc-encoder.git
 SOURCE_REPO_ANGLE=https://chromium.googlesource.com/angle/angle
 SOURCE_REPO_ARIBB24=https://github.com/nkoriyama/aribb24.git
@@ -39,6 +38,7 @@ SOURCE_REPO_HDR10PLUS_TOOL=https://github.com/quietvoid/hdr10plus_tool.git
 SOURCE_REPO_JO=https://github.com/jpmens/jo.git
 SOURCE_REPO_JPEGLI=https://github.com/google/jpegli.git
 SOURCE_REPO_JQ=https://github.com/jqlang/jq.git
+SOURCE_REPO_LCEVCDEC=https://github.com/v-novaltd/LCEVCdec.git
 SOURCE_REPO_LCMS2=https://github.com/mm2/Little-CMS.git
 SOURCE_REPO_LENSFUN=https://github.com/lensfun/lensfun.git
 SOURCE_REPO_LEPT=https://github.com/DanBloomberg/leptonica.git

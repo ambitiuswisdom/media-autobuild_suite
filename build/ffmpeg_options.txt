@@ -99,6 +99,7 @@
 --enable-libjxl
 --enable-libkvazaar
 --enable-liblc3
+--enable-liblcevc-dec
 --enable-liblensfun
 --enable-libmodplug
 --enable-libmpeghdec

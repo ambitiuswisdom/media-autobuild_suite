@@ -1178,17 +1178,26 @@ if [[ $sox = y ]]; then
         do_uninstall sox.{pc,h} bin-audio/{soxi,play,rec}.exe libsox.{,l}a "${_check[@]}"
         do_autoreconf
         extralibs=(-lshlwapi -lz)
-        enabled libmp3lame || extracommands+=(--without-lame)
+        extracflags=()
+        if enabled libmp3lame; then
+            mapfile -t -O "${#extralibs[@]}" extralibs < <($PKG_CONFIG --libs lame)
+            mapfile -t -O "${#extracflags[@]}" extracflags < <($PKG_CONFIG --cflags lame)
+        else
+            extracommands+=(--without-lame)
+        fi
         enabled_any libopencore-amr{wb,nb} &&
             extralibs+=(-lvo-amrwbenc) ||
             extracommands+=(--without-amr{wb,nb})
-        enabled libtwolame &&
-            extracommands+=(CFLAGS="$CFLAGS -DLIBTWOLAME_STATIC") ||
+        if enabled libtwolame; then
+            mapfile -t -O "${#extralibs[@]}" extralibs < <($PKG_CONFIG --libs twolame)
+            mapfile -t -O "${#extracflags[@]}" extracflags < <($PKG_CONFIG --cflags twolame)
+        else
             extracommands+=(--without-twolame)
+        fi
         enabled libvorbis || extracommands+=(--without-oggvorbis)
         hide_conflicting_libs
         sed -i 's|found_libgsm=yes|found_libgsm=no|g' configure
-        do_separate_conf --disable-symlinks ac_cv_lib_winmm_waveOutOpen=yes LIBS="-L$LOCALDESTDIR/lib ${extralibs[*]}" "${extracommands[@]}"
+        do_separate_conf --disable-symlinks ac_cv_lib_winmm_waveOutOpen=yes LIBS="-L$LOCALDESTDIR/lib ${extralibs[*]}" CFLAGS="${extracflags[*]} $CFLAGS" "${extracommands[@]}"
         do_make
         do_install src/sox.exe bin-audio/
         do_install sox.pc
@@ -1385,10 +1394,11 @@ fi
 _check=(libvmaf.{a,pc} libvmaf/libvmaf.h)
 if [[ $ffmpeg != no ]] && enabled libvmaf &&
     do_vcs "$SOURCE_REPO_LIBVMAF"; then
+    do_patch "https://github.com/Netflix/vmaf/pull/1700.patch" am
     do_uninstall share/model "${_check[@]}"
     do_pacman_install -m vim # for built_in_models
     cd_safe libvmaf
-    do_mesoninstall video -Denable_{float,tests}=true -Dbuilt_in_models=true
+    do_mesoninstall video -Denable_float=true -Dbuilt_in_models=true -Denable_tests=false
     do_checkIfExist
 fi
 file_installed -s libvmaf.dll.a && rm "$(file_installed libvmaf.dll.a)"
@@ -1681,6 +1691,14 @@ if [[ $ffmpeg != no ]] && enabled libuavs3d &&
     do_checkIfExist
 fi
 
+_check=(liblcevc_dec_api.a lcevc_dec.pc LCEVC/lcevc_dec.h)
+if [[ $ffmpeg != no ]] && enabled liblcevc-dec &&
+    do_vcs "$SOURCE_REPO_LCEVCDEC"; then
+    do_uninstall include/LCEVC "${_check[@]}"
+    do_cmakeinstall -DVN_SDK_{TRACING,METRICS,DIAGNOSTICS_ASYNC}=OFF
+    do_checkIfExist
+fi
+
 _check=(libdovi.a libdovi/rpu_parser.h dovi.pc bin-video/dovi_tool.exe)
 if [[ $dovitool = y ]] &&
     do_vcs "$SOURCE_REPO_DOVI_TOOL"; then
@@ -1793,16 +1811,6 @@ if [[ $ffmpeg != no ]] && enabled libvpl; then
         do_cmakeinstall -DUNIX=OFF
         do_checkIfExist
     fi
-fi
-
-_check=(AMF/core/Version.h)
-if [[ $ffmpeg != no ]] && { enabled amf || ! disabled_any autodetect amf; } &&
-    do_vcs "$SOURCE_REPO_AMF"; then
-    do_uninstall include/AMF
-    cd_safe amf/public/include
-    install -D -p -t "$LOCALDESTDIR/include/AMF/core" core/*.h
-    install -D -p -t "$LOCALDESTDIR/include/AMF/components" components/*.h
-    do_checkIfExist
 fi
 
 _check=(libgpac_static.a bin-video/{MP4Box,gpac}.exe)
@@ -2368,6 +2376,9 @@ if [[ $ffmpeg != no ]]; then
     do_pacman_install -m texinfo
     enabled libgsm && do_pacman_install gsm
     enabled libsnappy && do_pacman_install snappy
+    if { enabled amf || ! disabled_any autodetect amf; } && do_pacman_install amf-headers; then
+        do_uninstall include/AMF
+    fi
     if enabled libxvid && [[ $standalone = n ]]; then
         do_pacman_install xvidcore
         [[ -f $MINGW_PREFIX/lib/xvidcore.a ]] && mv -f "$MINGW_PREFIX"/lib/{,lib}xvidcore.a
@@ -2715,7 +2726,6 @@ if [[ $mpv != n ]] && pc_exists libavcodec libavformat libswscale libavfilter; t
     _deps=(lib{ass,avcodec,shaderc_combined,spirv-cross,placebo}.a "$MINGW_PREFIX"/lib/libuchardet.a)
     if do_vcs "$SOURCE_REPO_MPV"; then
         do_patch "https://github.com/mpv-player/mpv/compare/master...1480c1:mpv:initguid.patch" am
-        do_patch "https://github.com/mpv-player/mpv/pull/18328.patch" am
         do_uninstall share/man/man1/mpv.1 include/mpv share/doc/mpv etc/mpv "${_check[@]}"
         hide_conflicting_libs
         create_ab_pkgconfig
