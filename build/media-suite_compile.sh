@@ -39,6 +39,7 @@ while true; do
     --ffmpegChoice=* ) ffmpegChoice=${1#*=} && shift ;;
     --ffmpegKeepLegacyOpts=* ) ffmpegKeepLegacyOpts=${1#*=} && shift ;;
     --mpv=* ) mpv=${1#*=} && shift ;;
+    --libmpv=* ) libmpv=${1#*=} && shift ;;
     --deleteSource=* ) deleteSource=${1#*=} && shift ;;
     --license=* ) license=${1#*=} && shift ;;
     --standalone=* ) standalone=${1#*=} && shift ;;
@@ -1804,13 +1805,11 @@ if [[ $ffmpeg != no ]] && enabled decklink &&
 fi
 
 _check=(libvpl.a vpl.pc)
-if [[ $ffmpeg != no ]] && enabled libvpl; then
-    if do_vcs "$SOURCE_REPO_LIBVPL" libvpl; then
-        do_patch https://github.com/intel/libvpl/pull/198.patch am
-        do_uninstall include/vpl "${_check[@]}"
-        do_cmakeinstall -DUNIX=OFF
-        do_checkIfExist
-    fi
+if [[ $ffmpeg != no ]] && enabled libvpl &&
+    do_vcs "$SOURCE_REPO_LIBVPL" libvpl; then
+    do_uninstall include/vpl "${_check[@]}"
+    do_cmakeinstall -DUNIX=OFF
+    do_checkIfExist
 fi
 
 _check=(libgpac_static.a bin-video/{MP4Box,gpac}.exe)
@@ -2721,7 +2720,17 @@ if [[ $mpv != n ]] && pc_exists libavcodec libavformat libswscale libavfilter; t
         do_checkIfExist
     fi
 
-    _check=(libmpv.a mpv.pc)
+    case $libmpv in
+    shared)
+        _check=(libmpv.dll.a bin-video/libmpv-2.dll mpv.pc)
+        do_uninstall q libmpv.a
+        ;;
+    both) _check=(libmpv.{a,dll.a} bin-video/libmpv-2.dll mpv.pc) ;;
+    *)
+        _check=(libmpv.a mpv.pc)
+        do_uninstall q bin-video/libmpv-2.dll libmpv.dll.a
+        ;;
+    esac
     ! mpv_disabled cplayer && _check+=(bin-video/mpv.{exe,com})
     _deps=(lib{ass,avcodec,shaderc_combined,spirv-cross,placebo}.a "$MINGW_PREFIX"/lib/libuchardet.a)
     if do_vcs "$SOURCE_REPO_MPV"; then
@@ -2742,6 +2751,7 @@ if [[ $mpv != n ]] && pc_exists libavcodec libavformat libswscale libavfilter; t
         sed -i "s|spirv-cross-c-shared|spirv-cross|" meson.build
 
         mapfile -t MPV_ARGS < <(mpv_build_args)
+        [[ $libmpv =~ ^(shared|both)$ ]] && MPV_ARGS+=("--default-library=$libmpv")
         CFLAGS+=" ${mpv_cflags[*]}" LDFLAGS+=" ${mpv_ldflags[*]}" \
             do_mesoninstall video "${MPV_ARGS[@]}"
         unset MPV_ARGS mpv_cflags mpv_ldflags
