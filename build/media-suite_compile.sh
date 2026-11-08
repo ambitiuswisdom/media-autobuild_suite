@@ -1480,9 +1480,9 @@ if { [[ $rav1e = y ]] || [[ $libavif = y ]] || enabled librav1e; } &&
     fi
 
     do_checkIfExist
+    # add allow-multiple-definition to the .pc file to fix linking with other rust libraries
+    sed -i 's/Libs.private:.*/& -Wl,--allow-multiple-definition/' "$LOCALDESTDIR/lib/pkgconfig/rav1e.pc" >/dev/null 2>&1
 fi
-# add allow-multiple-definition to the .pc file to fix linking with other rust libraries
-sed -i 's/Libs.private:.*/& -Wl,--allow-multiple-definition/' "$LOCALDESTDIR/lib/pkgconfig/rav1e.pc" >/dev/null 2>&1
 
 _check=(bin-video/SvtAv1EncApp.exe
     libSvtAv1Enc.a SvtAv1Enc.pc)
