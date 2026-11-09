@@ -51,7 +51,7 @@
 --enable-libopencore-amrwb
 --enable-libopenjpeg
 --enable-libopenmpt
---enable-librav1e
+#--enable-librav1e
 --enable-libshine
 --enable-libsnappy
 --enable-libsoxr
