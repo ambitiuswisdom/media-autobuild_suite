@@ -104,6 +104,7 @@ For information about the compiler environment see the wiki, there you also have
         - cuda-nvcc (needs CUDA SDK installed)
             - needs non-free license
             - disabled by default
+            - disabled if cuda-llvm is enabled
         - decklink (12.5.1)
             - needs non-free license
         - frei0r (git)
@@ -155,10 +156,10 @@ For information about the compiler environment see the wiki, there you also have
         - libxavs2 (git)
         - libxevd (git)
         - libxeve (git)
-        - libzmq (MSYS2 package)
+        - libzmq (git)
         - libzvbi (git)
         - openal (git)
-        - vapoursynth (R81)
+        - vapoursynth (R82)
         - vulkan (git)
     - Full shared dependencies (in addition to Full)
         - libopenh264 (official binaries)
@@ -230,7 +231,7 @@ For information about the compiler environment see the wiki, there you also have
             - rubberband (git)
             - uchardet (MSYS2 package)
             - vulkan, shaderc, spirv-cross, libplacebo (git)
-            - vapoursynth (R81)
+            - vapoursynth (R82)
             - libmpv: static, shared (libmpv-2.dll) or both, chosen when asked to build mpv
         - Full build (ffmpegChoice=4)
             - openal (git)
@@ -269,8 +270,6 @@ For information about the compiler environment see the wiki, there you also have
 
 ## Requirements
 
---------
-
 - Windows 64-bits (tested with Win10 & Win11 64-bits)
   - 32-bit Windows hosts are not supported. The suite no longer builds 32-bit targets.
 - NTFS drive
@@ -279,11 +278,7 @@ For information about the compiler environment see the wiki, there you also have
 - At least Powershell 4, Powershell core is not supported at this time
   - Powershell 5.1 can be downloaded [here](https://www.microsoft.com/en-us/download/details.aspx?id=54616)
 
---------
-
 ## Information
-
---------
 
 This tool is inspired by the very nice, linux cross-compiling tool from Roger Pack (rdp):
 <https://github.com/rdp/ffmpeg-windows-build-helpers>
@@ -323,8 +318,6 @@ Have fun!
 
 ## Troubleshooting
 
---------
-
 If there's some error during compilation follow these steps:
 
 1. Make sure you're using the latest version of this suite by downloading the [latest version](https://github.com/m-ab-s/media-autobuild_suite/archive/master.zip) and replacing all files with the new ones;
@@ -335,8 +328,6 @@ If there's some error during compilation follow these steps:
 6. If you compile with `--enable-cuda-nvcc`, see [Notes about CUDA SDK](#notes-about-cuda-sdk)
 
 ## What The Individual Files Do
-
---------
 
 `media-autobuild_suite.bat`
 
@@ -373,15 +364,11 @@ If there's some error during compilation follow these steps:
 
 ## Optional User Files
 
---------
-
 `/local64/etc/custom_profile` & `$HOME/custom_build_options`
 
 - Put here any general/platform tweaks that you need for _your_ specific environment. See `/local64/etc/profile2.local` for example usage.
 
 ## Custom Patches
-
---------
 
 Using custom patches is not officially supported, if you do use custom patches, do not expect much support from this suite. Either go to the patch's author or to a forum for help
 
@@ -485,14 +472,18 @@ _post_make(){
 For a list of possible directive, look under `unset_extra_script` in [media-suite_helper.sh](build/media-suite_helper.sh).
 Beware as they may change in the future.
 
-## Notes about CUDA SDK
+## Notes about Vulkan-Loader
 
---------
+Libplacebo and mpv needs Vulkan-Loader.And Vulkan-Loader of this suite uses the statically linked [Vulkan-Shim-Loader](https://github.com/BtbN/Vulkan-Shim-Loader), which loads `vulkan-1.dll`(usually installed with the graphics driver) at runtime. Thus the suite does not support `--enable-vulkan-static` for FFmpeg.
+
+## Notes about CUDA SDK
 
 ### This is for cuda-nvcc, not for NVENC, it is built with ffmpeg by default
 
 For `--enable-cuda-nvcc` to work, you need NVIDIA's [CUDA SDK](https://developer.nvidia.com/cuda-toolkit) installed with `CUDA_PATH` variable to be set system-wide (Usually set by default on CUDA SDK install) and VS2017 or better installed which should come with `vswhere.exe`.\
 If for some reason `CUDA_PATH` isn't set and/or `vswhere.exe` isn't installed, you need to export the `CUDA_PATH` variable path using the above mentioned user files and manually export the correct `PATH` including the absolute `cygpath` converted path to MSVC's `cl.exe`.
+
+`--enable-cuda-nvcc` is disabled if `--enable-cuda-llvm` is enabled.
 
 ### You do not need to do the following if you installed the SDK with the default locations etc and you have 8.3 short paths enabled or if you installed to a directory without any spaces
 
