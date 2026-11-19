@@ -125,7 +125,7 @@ libaribb24 libaribcaption libastcenc libbs2b libcaca libcdio libcodec2 libcurl l
 libdvdread libfdk-xhe-aac libflite libfribidi libgme libilbc libjxl libkvazaar liblc3 liblcevc-dec #liblensfun ^
 libmodplug libmpeghdec liboapv libplacebo libqrencode libquirc librist #librtmp librubberband libssh ^
 libsvthevc libsvtjpegxs libsvtvp9 libtesseract libuavs3d libvvdec libvvenc libxavs libxavs2 ^
-libxevd libxeve libzmq libzvbi openal vapoursynth vulkan
+libxevd libxeve libzmq libzvbi openal vapoursynth vulkan whisper
 
 :: options also available with the suite that add shared dependencies
 set ffmpeg_options_full_shared=#libopenh264 opencl
@@ -785,8 +785,10 @@ if [0]==[%soxBINI%] (
     echo -------------------------------------------------------------------------------
     echo.
     echo. Build sox binaries [Sound processing tool]?
-    echo. 1 = Yes
+    echo. 1 = Yes, build sox
     echo. 2 = No
+    echo. 3 = Yes, build sox_ng [maintained fork of sox, installed as sox_ng.exe]
+    echo. 4 = Yes, build both
     echo.
     echo -------------------------------------------------------------------------------
     echo -------------------------------------------------------------------------------
@@ -796,7 +798,9 @@ if [0]==[%soxBINI%] (
 if "%buildsox%"=="" GOTO sox
 if %buildsox%==1 set "sox=y"
 if %buildsox%==2 set "sox=n"
-if %buildsox% GTR 2 GOTO sox
+if %buildsox%==3 set "sox=ng"
+if %buildsox%==4 set "sox=both"
+if %buildsox% GTR 4 GOTO sox
 if %deleteINI%==1 echo.soxB=^%buildsox%>>%ini%
 
 :ffmpeg

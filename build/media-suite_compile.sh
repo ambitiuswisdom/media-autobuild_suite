@@ -568,15 +568,13 @@ if [[ $mediainfo = y || $bmx = y || $curl != n ]]; then
         do_checkIfExist
     fi
     _deps=(libidn2.a)
-    _check=(libpsl.{{,l}a,h,pc})
+    _check=(libpsl.{a,h,pc})
     [[ $standalone == y ]] && _check+=(bin-global/psl.exe)
     if do_pkgConfig "libpsl = 0.23.3" &&
         do_wget -h 93941f85a1e7bd593fa94f299233cb5dfc91cd144fd9a78a6ceb75001c5b03be \
         "https://github.com/rockdaboot/libpsl/releases/download/0.23.3/libpsl-0.23.3.tar.gz"; then
-        do_uninstall "${_check[@]}"
-        [[ $standalone == y ]] || sed -ri 's|(bin_PROGRAMS = ).*|\1|g' tools/Makefile.in
-        grep_or_sed "Requires.private" libpsl.pc.in "/Libs:/ i\Requires.private: libidn2"
-        CFLAGS+=" -DPSL_STATIC" do_separate_confmakeinstall global --disable-{nls,rpath,gtk-doc-html,man,runtime}
+        do_uninstall libpsl.la "${_check[@]}"
+        do_mesoninstall global -Druntime=libidn2 -Dtests=false
         do_checkIfExist
     fi
 fi
@@ -897,8 +895,8 @@ fi
 set_title "compiling audio tools"
 do_simple_print -p '\n\t'"${orange}Starting $bits compilation of audio tools${reset}"
 
-[[ $sox = y ]] && do_pacman_install wavpack
-if [[ $ffmpeg != no || $sox = y ]]; then
+[[ $sox != n ]] && do_pacman_install wavpack
+if [[ $ffmpeg != no || $sox != n ]]; then
     enabled_any libopencore-amr{wb,nb} && do_pacman_install opencore-amr
     if enabled libtwolame; then
         do_pacman_install twolame
@@ -961,7 +959,7 @@ if [[ $flac = y ]]; then
         do_cmakeinstall audio -DBUILD_{DOCS,DOXYGEN,EXAMPLES,TESTING}=OFF -DINSTALL_MANPAGES=OFF
         do_checkIfExist
     fi
-elif [[ $sox = y ]] || { [[ $standalone = y ]] && enabled_any libvorbis libopus; }; then
+elif [[ $sox != n ]] || { [[ $standalone = y ]] && enabled_any libvorbis libopus; }; then
     do_pacman_install flac
     grep_and_sed dllimport "$MINGW_PREFIX"/include/FLAC++/export.h \
         's|__declspec\(dllimport\)||g' "$MINGW_PREFIX"/include/FLAC{,++}/export.h
@@ -971,7 +969,7 @@ grep_and_sed dllimport "$LOCALDESTDIR"/include/FLAC++/export.h \
 grep_or_sed pthread "$LOCALDESTDIR/lib/pkgconfig/flac.pc" 's/Libs.private: /&-pthread /;s/Cflags: .*/& -pthread/'
 
 _check=(libvo-amrwbenc.{,l}a vo-amrwbenc.pc)
-if [[ $ffmpeg != no ]] && enabled libvo-amrwbenc &&
+if [[ $ffmpeg != no || $sox != n ]] && enabled libvo-amrwbenc &&
     do_pkgConfig "vo-amrwbenc = 0.1.3" &&
     do_wget_sf -h f63bb92bde0b1583cb3cb344c12922e0 \
         "opencore-amr/vo-amrwbenc/vo-amrwbenc-0.1.3.tar.gz"; then
@@ -1152,7 +1150,7 @@ if [[ $ffmpeg != no ]] && enabled libbs2b && do_pkgConfig "libbs2b = 3.1.0" &&
 fi
 
 _check=(libsndfile.a sndfile.{h,pc})
-if [[ $sox = y ]] && do_vcs "$SOURCE_REPO_SNDFILE" sndfile; then
+if [[ $sox != n ]] && do_vcs "$SOURCE_REPO_SNDFILE" sndfile; then
     do_uninstall include/sndfile.hh "${_check[@]}"
     do_cmakeinstall -DBUILD_EXAMPLES=off -DBUILD_TESTING=off -DBUILD_PROGRAMS=OFF
     do_checkIfExist
@@ -1160,7 +1158,7 @@ fi
 
 _check=(bin-audio/sox.exe sox.pc)
 _deps=(libsndfile.a opus.pc "$MINGW_PREFIX"/lib/libmp3lame.a)
-if [[ $sox = y ]]; then
+if [[ $sox = y || $sox = both ]]; then
     do_pacman_install libmad
     do_pacman_install libid3tag
     extracommands=()
@@ -1201,6 +1199,54 @@ if [[ $sox = y ]]; then
         hide_conflicting_libs -R
         do_checkIfExist
         unset extralibs
+    fi
+    unset extracommands
+fi
+
+# sox_ng installs as sox_ng.exe with its own libsox_ng/sox_ng.h/sox_ng.pc,
+# so it can be built next to sox without the two overwriting each other.
+_check=(bin-audio/sox_ng.exe sox_ng.pc)
+_deps=(libsndfile.a opus.pc "$MINGW_PREFIX"/lib/libmp3lame.a)
+if [[ $sox = ng || $sox = both ]]; then
+    do_pacman_install libmad libid3tag
+    extracommands=()
+    if enabled libopus; then
+        # libopusenc is what lets sox_ng write opus, not just read it
+        [[ $standalone = y ]] || do_pacman_install opusfile libopusenc
+    else
+        extracommands+=(--without-opus)
+    fi
+    if do_vcs "$SOURCE_REPO_SOX_NG" sox_ng; then
+        do_uninstall sox_ng.{pc,h} bin-audio/{soxi,play,rec}_ng.exe libsox_ng.{,l}a "${_check[@]}"
+        do_autoreconf
+        extralibs=(-lshlwapi -lz)
+        extracflags=()
+        if enabled libmp3lame; then
+            mapfile -t -O "${#extralibs[@]}" extralibs < <($PKG_CONFIG --libs lame)
+            mapfile -t -O "${#extracflags[@]}" extracflags < <($PKG_CONFIG --cflags lame)
+        else
+            extracommands+=(--without-lame)
+        fi
+        enabled_any libopencore-amr{wb,nb} &&
+            extralibs+=(-lvo-amrwbenc) ||
+            extracommands+=(--without-amr{wb,nb})
+        if enabled libtwolame; then
+            mapfile -t -O "${#extralibs[@]}" extralibs < <($PKG_CONFIG --libs twolame)
+            mapfile -t -O "${#extracflags[@]}" extracflags < <($PKG_CONFIG --cflags twolame)
+        else
+            extracommands+=(--without-twolame)
+        fi
+        enabled libvorbis || extracommands+=(--without-oggvorbis)
+        hide_conflicting_libs
+        sed -i 's|found_libgsm=yes|found_libgsm=no|g' configure
+        do_separate_conf --disable-symlinks --with-distro=media-autobuild_suite \
+            LIBS="-L$LOCALDESTDIR/lib ${extralibs[*]}" CFLAGS="${extracflags[*]} $CFLAGS" "${extracommands[@]}"
+        do_make
+        do_install src/sox_ng.exe bin-audio/
+        do_install sox_ng.pc
+        hide_conflicting_libs -R
+        do_checkIfExist
+        unset extralibs extracflags
     fi
     unset extracommands
 fi
@@ -1309,13 +1355,18 @@ fi
 
 _check=(bin/atw_ldwrapper libAudioToolboxWrapper.a)
 if [[ $ffmpeg != no ]] && enabled audiotoolbox; then
-    _qtfiles_url="https://github.com/AnimMouse/QTFiles/releases/download/v12.13.9.1"
-    _deps=(bin-video/{ASL,CoreAudioToolbox,CoreFoundation,icudt62,libdispatch,libicuin,libicuuc,objc}.dll)
-    if ! files_exist "${_deps[@]}"; then
-        do_wget -r -q -h a81ac9146e8daec8c681e1c8d49548a950f62bb5fe44bdcdaca5aabe3afb3b8f \
-            "${_qtfiles_url}/QTfiles64.7z"
-        do_install ./*.dll bin-video
-        rm -rf ../QTfiles64/
+    _deps=(bin-video/{ASL,CoreAudioToolbox,CoreFoundation,libdispatch,libicuin,libicuuc,objc}.dll)
+    if { ! files_exist "${_deps[@]}" ||
+        ! compgen -G "$LOCALDESTDIR/bin-video/icudt*.dll" > /dev/null; } &&
+        do_wget -r -n "https://www.apple.com/itunes/download/win64" iTunes64Setup.exe; then
+        rm -rf iTunes64 && mkdir iTunes64 && cd_safe iTunes64
+        log extract 7z e -y ../iTunes64Setup.exe iTunes64.msi
+        MSYS2_ARG_CONV_EXCL='*' log extract.msi msiexec /a "$(cygpath -w iTunes64.msi)" /qn \
+            TARGETDIR="$(cygpath -w "$PWD/root")"
+        do_install root/iTunes/{ASL,CoreAudioToolbox,CoreFoundation,icudt*,libdispatch,libicuin,libicuuc,objc}.dll \
+            bin-video/
+        cd_safe ..
+        rm -rf iTunes64 iTunes64Setup.exe
     fi
 
     if do_vcs "$SOURCE_REPO_AUDIOTOOLBOX"; then
@@ -1323,7 +1374,6 @@ if [[ $ffmpeg != no ]] && enabled audiotoolbox; then
         do_cmakeinstall
         do_checkIfExist
     fi
-    unset _qtfiles_url
 fi
 
 if [[ $exitearly = EE4 ]]; then
@@ -1531,15 +1581,13 @@ if { [[ $other265 = y ]] || { [[ $ffmpeg != no ]] && enabled libkvazaar; }; } &&
     do_checkIfExist
 fi
 
-_check=(libSDL2{,_test,main}.a sdl2.pc SDL2/SDL.h)
+_check=(libSDL2{,main}.a sdl2.pc SDL2/SDL.h)
 if { { [[ $ffmpeg != no ]] &&
     { enabled sdl2 || ! disabled_any sdl2 autodetect; }; } ||
     mpv_enabled sdl2; } &&
     do_vcs "$SOURCE_REPO_SDL2"; then
-    do_uninstall include/SDL2 lib/cmake/SDL2 bin/sdl2-config "${_check[@]}"
-    do_autogen
-    sed -i 's|__declspec(dllexport)||g' include/{begin_code,SDL_opengl}.h
-    do_separate_confmakeinstall
+    do_uninstall include/SDL2 lib/cmake/SDL2 bin/sdl2-config libSDL2{,_test,main}.la libSDL2_test.a "${_check[@]}"
+    do_cmakeinstall -DUNIX=OFF -DSDL_TEST=OFF
     do_checkIfExist
 fi
 
@@ -2325,6 +2373,40 @@ if { [[ $mpv != n ]] ||
     mv -f "$(file_installed shaderc_combined.pc)" "$(file_installed shaderc.pc)"
     do_checkIfExist
 fi
+
+_check=(libwhisper.a libggml{,-base,-cpu}.a whisper.{h,pc} ggml.h)
+_whisper_vulkan=n
+enabled vulkan && files_exist bin/glslc.exe libvulkan-1.a vulkan/vulkan.hpp SPIRV-Headers.pc &&
+    _whisper_vulkan=y _check+=(libggml-vulkan.a)
+if [[ $ffmpeg != no ]] && enabled whisper &&
+    do_vcs "$SOURCE_REPO_WHISPER"; then
+    do_uninstall "$LOCALDESTDIR"/include/ggml*.h include/{gguf,parakeet}.h \
+        lib/cmake/{ggml,parakeet,whisper} lib{ggml-vulkan,parakeet}.a parakeet.pc "${_check[@]}"
+    sed -i '/CMAKE_STATIC_LIBRARY_PREFIX ""/d' ggml/CMakeLists.txt
+    case $CC in
+    *clang)
+        do_pacman_install omp
+        _whisper_omp=-fopenmp=libomp _whisper_flags=
+        ;;
+    *) _whisper_omp="-fopenmp -lgomp" _whisper_flags=" -Wa,-muse-unaligned-vector-move" ;;
+    esac
+    _whisper_libs="-lwhisper -lggml -lggml-cpu -lggml-base"
+    extracommands=(-DGGML_VULKAN=OFF)
+    if [[ $_whisper_vulkan = y ]]; then
+        _whisper_libs="-lwhisper -lggml -lggml-vulkan -lggml-cpu -lggml-base"
+        extracommands=(-DGGML_VULKAN=ON -DVulkan_LIBRARY="$LOCALDESTDIR/lib/libvulkan-1.a")
+    fi
+    CFLAGS+="$_whisper_flags" CXXFLAGS+="$_whisper_flags" \
+        do_cmakeinstall -DGGML_{NATIVE,CCACHE}=OFF -DWHISPER_BUILD_{TESTS,EXAMPLES,SERVER}=OFF \
+        "${extracommands[@]}"
+    sed -i -e "s|^Libs:.*|Libs: -L\${libdir} $_whisper_libs|" \
+        -e "/^Libs:/a Libs.private: $_whisper_omp" "$LOCALDESTDIR/lib/pkgconfig/whisper.pc"
+    [[ $_whisper_vulkan = y ]] &&
+        sed -i '/^Libs:/i Requires.private: vulkan' "$LOCALDESTDIR/lib/pkgconfig/whisper.pc"
+    do_checkIfExist
+    unset _whisper_omp _whisper_flags _whisper_libs extracommands
+fi
+unset _whisper_vulkan
 
 _check=(libplacebo.{a,pc})
 _deps=(lib{vulkan-1,shaderc_combined}.a spirv-cross-c-shared.pc shaderc/shaderc.h)

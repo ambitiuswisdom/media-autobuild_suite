@@ -98,7 +98,7 @@ For information about the compiler environment see the wiki, there you also have
         - libzimg (git)
     - Full build (in addition to Zeranoe)
         - audiotoolbox (AudioToolboxWrapper, git)
-            - requires Apple runtime DLLs, downloaded by the suite
+            - requires Apple runtime DLLs, extracted from the latest iTunes installer by the suite
         - cairo (MSYS2 package)
         - chromaprint (MSYS2 package)
         - cuda-nvcc (needs CUDA SDK installed)
@@ -161,6 +161,9 @@ For information about the compiler environment see the wiki, there you also have
         - openal (git)
         - vapoursynth (R82)
         - vulkan (git)
+        - whisper (whisper.cpp, git)
+            - requires a whisper.cpp model file at runtime
+            - uses Vulkan for GPU acceleration if vulkan is enabled
     - Full shared dependencies (in addition to Full)
         - libopenh264 (official binaries)
             - disabled by default

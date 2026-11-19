@@ -87,6 +87,7 @@ Most libs use pkg-config files to check if they exist, so for most libs in this 
     vorbis
     vpx
     vulkan
+    whisper
     x264
     x265
     xavs
@@ -178,6 +179,7 @@ To recompile these, delete `<appname>.exe` in corresponding binary directories:
         avifdec
         avifenc
         bmxtranswrap
+        CoreAudioToolbox.dll (re-extracts all Apple DLLs from iTunes)
         dav1d
         davs2
         dovi_tool
