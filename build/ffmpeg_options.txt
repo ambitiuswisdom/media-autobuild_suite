@@ -127,7 +127,7 @@
 --enable-openal
 --enable-vapoursynth
 --enable-vulkan
---enable-whisper
+#--enable-whisper
 
 # Full plus options that add shared dependencies
 --enable-libopenh264
