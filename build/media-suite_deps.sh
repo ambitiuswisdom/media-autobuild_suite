@@ -58,7 +58,7 @@ SOURCE_REPO_LIBILBC=https://github.com/TimothyGu/libilbc.git
 SOURCE_REPO_LIBJXL=https://github.com/libjxl/libjxl.git
 SOURCE_REPO_LIBKVAZAAR=https://github.com/ultravideo/kvazaar.git
 SOURCE_REPO_LIBLC3=https://github.com/google/liblc3.git
-SOURCE_REPO_LIBLSMASH=https://github.com/l-smash/l-smash.git
+SOURCE_REPO_LIBLSMASH=https://github.com/vimeo/l-smash.git
 SOURCE_REPO_LIBMEDIAINFO=https://github.com/MediaArea/MediaInfoLib.git
 SOURCE_REPO_LIBMUSICBRAINZ=https://github.com/metabrainz/libmusicbrainz.git
 SOURCE_REPO_LIBMYSOFA=https://github.com/hoene/libmysofa.git
@@ -91,6 +91,7 @@ SOURCE_REPO_MPEGHDEC=https://github.com/Fraunhofer-IIS/mpeghdec.git
 SOURCE_REPO_MPV=https://github.com/mpv-player/mpv.git
 SOURCE_REPO_MUJS=https://codeberg.org/ccxvii/mujs.git
 SOURCE_REPO_NEON=https://github.com/notroj/neon.git
+SOURCE_REPO_OBUPARSE=https://github.com/dwbuiten/obuparse.git
 SOURCE_REPO_OPENAL=https://github.com/kcat/openal-soft.git#tag=latest
 SOURCE_REPO_OPENAPV=https://github.com/AcademySoftwareFoundation/openapv.git
 SOURCE_REPO_OPENCLHEADERS=https://github.com/KhronosGroup/OpenCL-Headers.git
@@ -103,7 +104,7 @@ SOURCE_REPO_RIPGREP=https://github.com/BurntSushi/ripgrep.git
 SOURCE_REPO_RUBBERBAND=https://github.com/breakfastquay/rubberband.git
 SOURCE_REPO_SDL2=https://github.com/libsdl-org/SDL.git#SDL2
 SOURCE_REPO_SHADERC=https://github.com/google/shaderc.git
-SOURCE_REPO_SHINE=https://github.com/toots/shine.git
+SOURCE_REPO_SHINE=https://github.com/toots/shine.git#commit=ab5e3526b64af1a2eaa43aa6f441a7312e013519
 SOURCE_REPO_SNDFILE=https://github.com/libsndfile/libsndfile.git
 SOURCE_REPO_SOX=https://git.code.sf.net/p/sox/code
 SOURCE_REPO_SOX_NG=https://codeberg.org/sox_ng/sox_ng.git
