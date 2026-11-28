@@ -578,9 +578,8 @@ if [[ $mediainfo = y || $bmx = y || $curl != n ]]; then
     _deps=(libidn2.a)
     _check=(libpsl.{a,h,pc})
     [[ $standalone == y ]] && _check+=(bin-global/psl.exe)
-    if do_pkgConfig "libpsl = 0.23.3" &&
-        do_wget -h 93941f85a1e7bd593fa94f299233cb5dfc91cd144fd9a78a6ceb75001c5b03be \
-        "https://github.com/rockdaboot/libpsl/releases/download/0.23.3/libpsl-0.23.3.tar.gz"; then
+    if do_vcs "$SOURCE_REPO_LIBPSL"; then
+        do_git_submodule
         do_uninstall libpsl.la "${_check[@]}"
         do_mesoninstall global -Druntime=libidn2 -Dtests=false
         do_checkIfExist
@@ -979,10 +978,9 @@ grep_or_sed pthread "$LOCALDESTDIR/lib/pkgconfig/flac.pc" 's/Libs.private: /&-pt
 
 _check=(libvo-amrwbenc.{,l}a vo-amrwbenc.pc)
 if [[ $ffmpeg != no || $sox != n ]] && enabled libvo-amrwbenc &&
-    do_pkgConfig "vo-amrwbenc = 0.1.3" &&
-    do_wget_sf -h f63bb92bde0b1583cb3cb344c12922e0 \
-        "opencore-amr/vo-amrwbenc/vo-amrwbenc-0.1.3.tar.gz"; then
+    do_vcs "$SOURCE_REPO_VOAMRWBENC"; then
     do_uninstall include/vo-amrwbenc "${_check[@]}"
+    do_autoreconf
     do_separate_confmakeinstall
     do_checkIfExist
 fi
@@ -1219,7 +1217,7 @@ fi
 _check=(bin-audio/sox_ng.exe sox_ng.pc)
 _deps=(libsndfile.a opus.pc "$MINGW_PREFIX"/lib/libmp3lame.a)
 if [[ $sox = ng || $sox = both ]]; then
-    do_pacman_install libmad libid3tag
+    do_pacman_install libmad libid3tag speexdsp
     extracommands=()
     if enabled libopus; then
         # libopusenc is what lets sox_ng write opus, not just read it
@@ -1426,7 +1424,8 @@ fi
 
 _check=(libvpx.a vpx.pc)
 [[ $standalone = y || $av1an = y ]] && _check+=(bin-video/vpxenc.exe)
-if { enabled libvpx || [[ $vpx = y ]]; } && do_vcs "$SOURCE_REPO_VPX" vpx; then
+if { { [[ $ffmpeg != no ]] && enabled libvpx; } || [[ $vpx = y ]]; } &&
+    do_vcs "$SOURCE_REPO_VPX" vpx; then
     do_pacman_install yasm
     extracommands=()
     [[ -f config.mk ]] && log "distclean" make distclean
@@ -1553,7 +1552,7 @@ if [[ $standalone = y || $svtav1 = y || $av1an = y ]]; then
     _check+=(bin-video/SvtAv1EncApp.exe)
     extracommands=(-DBUILD_APPS=ON)
 fi
-if { [[ $svtav1 = y ]] || enabled libsvtav1; } &&
+if { [[ $svtav1 = y ]] || { [[ $ffmpeg != no ]] && enabled libsvtav1; }; } &&
     do_vcs "$SOURCE_REPO_SVTAV1"; then
     do_uninstall include/svt-av1 "${_check[@]}" include/svt-av1
     do_cmakeinstall video -DUNIX=OFF -DENABLE_AVX512=ON "${extracommands[@]}"
@@ -1602,14 +1601,34 @@ if { [[ $other265 = y ]] || { [[ $ffmpeg != no ]] && enabled libkvazaar; }; } &&
     unset extracommands
 fi
 
-_check=(libSDL2{,main}.a sdl2.pc SDL2/SDL.h)
-if { { [[ $ffmpeg != no ]] &&
+if { [[ $ffmpeg != no ]] &&
     { enabled sdl2 || ! disabled_any sdl2 autodetect; }; } ||
-    mpv_enabled sdl2; } &&
-    do_vcs "$SOURCE_REPO_SDL2"; then
-    do_uninstall include/SDL2 lib/cmake/SDL2 bin/sdl2-config libSDL2{,_test,main}.la libSDL2_test.a "${_check[@]}"
-    do_cmakeinstall -DUNIX=OFF -DSDL_TEST=OFF
-    do_checkIfExist
+    mpv_enabled sdl2; then
+    _check=(libSDL3.a sdl3.pc SDL3/SDL.h)
+    if do_vcs "$SOURCE_REPO_SDL"; then
+        do_uninstall include/SDL3 lib/cmake/SDL3 "${_check[@]}"
+        do_cmakeinstall -DUNIX=OFF -DSDL_TEST_LIBRARY=OFF
+        do_checkIfExist
+    fi
+
+    _deps=(libSDL3.a)
+    _check=(libSDL2{,main}.a sdl2-compat.pc SDL2/SDL.h)
+    if do_vcs "$SOURCE_REPO_SDL2_COMPAT"; then
+        _mingw_patches_sdl2compat="https://raw.githubusercontent.com/msys2/MINGW-packages/master/mingw-w64-sdl2-compat"
+        # git am needs a clean tree, so apply these before the plain patches
+        do_patch "$_mingw_patches_sdl2compat/0003-Enable-static-library-support-for-Windows.patch" am
+        do_patch "$_mingw_patches_sdl2compat/0004-Make-static-library-really-static-for-MinGW.patch" am
+        do_patch "$_mingw_patches_sdl2compat/0001-just-build-normal.patch"
+        do_patch "$_mingw_patches_sdl2compat/0005-SDL_config_windows.h-Define-HAVE_LIBC-for-MinGW.patch"
+        do_uninstall include/SDL2 lib/cmake/SDL2 bin/sdl2-config sdl2.pc \
+            libSDL2{,_test,main}.la libSDL2_test.a "${_check[@]}"
+        do_cmakeinstall -DUNIX=OFF -DSDL2COMPAT_TESTS=OFF -DSDL2COMPAT_STATIC=ON
+        # there's no option to disable building the shared library, so delete them manually
+        [[ -f "$LOCALDESTDIR"/lib/libSDL2.dll.a ]] && rm -f "$LOCALDESTDIR"/lib/libSDL2.dll.a
+        [[ -f "$LOCALDESTDIR"/bin/SDL2.dll ]] && rm -f "$LOCALDESTDIR"/bin/SDL2.dll
+        do_checkIfExist
+        unset _mingw_patches_sdl2compat
+    fi
 fi
 
 _check=(libdvdread.a dvdread.pc)

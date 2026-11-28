@@ -68,6 +68,7 @@ SOURCE_REPO_LIBOPUSENC=https://github.com/xiph/libopusenc.git
 SOURCE_REPO_LIBPLACEBO=https://code.videolan.org/videolan/libplacebo.git
 SOURCE_REPO_LIBQRENCODE=https://github.com/fukuchi/libqrencode.git
 SOURCE_REPO_LIBPNG=https://github.com/pnggroup/libpng.git#branch=libpng16
+SOURCE_REPO_LIBPSL=https://github.com/rockdaboot/libpsl.git
 SOURCE_REPO_LIBRAV1E=https://github.com/xiph/rav1e.git
 SOURCE_REPO_LIBRESSL=https://github.com/libressl-portable/portable.git#tag=LATEST
 SOURCE_REPO_LIBRIST=https://code.videolan.org/rist/librist.git
@@ -102,7 +103,8 @@ SOURCE_REPO_OPUSFILE=https://github.com/xiph/opusfile.git
 SOURCE_REPO_QUIRC=https://github.com/dlbeer/quirc.git
 SOURCE_REPO_RIPGREP=https://github.com/BurntSushi/ripgrep.git
 SOURCE_REPO_RUBBERBAND=https://github.com/breakfastquay/rubberband.git
-SOURCE_REPO_SDL2=https://github.com/libsdl-org/SDL.git#SDL2
+SOURCE_REPO_SDL=https://github.com/libsdl-org/SDL.git
+SOURCE_REPO_SDL2_COMPAT=https://github.com/libsdl-org/sdl2-compat.git
 SOURCE_REPO_SHADERC=https://github.com/google/shaderc.git
 SOURCE_REPO_SHINE=https://github.com/toots/shine.git#commit=ab5e3526b64af1a2eaa43aa6f441a7312e013519
 SOURCE_REPO_SNDFILE=https://github.com/libsndfile/libsndfile.git
@@ -121,6 +123,7 @@ SOURCE_REPO_UAVS3D=https://github.com/uavs3/uavs3d.git
 SOURCE_REPO_URIPARSER=https://github.com/uriparser/uriparser.git
 SOURCE_REPO_UVG266=https://github.com/ultravideo/uvg266.git
 SOURCE_REPO_VIDSTAB=https://github.com/georgmartius/vid.stab.git
+SOURCE_REPO_VOAMRWBENC=https://git.code.sf.net/p/opencore-amr/vo-amrwbenc
 SOURCE_REPO_VORBIS_TOOLS=https://github.com/xiph/vorbis-tools.git
 SOURCE_REPO_VPX=https://chromium.googlesource.com/webm/libvpx
 SOURCE_REPO_VULKAN_SHIM=https://github.com/BtbN/Vulkan-Shim-Loader.git
